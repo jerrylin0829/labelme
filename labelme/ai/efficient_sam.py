@@ -35,7 +35,7 @@ class EfficientSam:
 
     def _compute_and_cache_image_embedding(self):
         with self._lock:
-            logger.debug("Computing image embedding...")
+            logger.debug("Computing image ...")
             image = imgviz.rgba2rgb(self._image)
             batched_images = image.transpose(2, 0, 1)[None].astype(np.float32) / 255.0
             (self._image_embedding,) = self._encoder_session.run(

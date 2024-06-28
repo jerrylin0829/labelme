@@ -175,6 +175,7 @@ class Shape(object):
 
     def paint(self, painter):
         if self.mask is None and not self.points:
+            print("No points to paint")
             return
 
         color = self.select_line_color if self.selected else self.line_color

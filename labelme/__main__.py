@@ -9,6 +9,10 @@ import yaml
 from qtpy import QtCore
 from qtpy import QtWidgets
 
+labelme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'../..', 'labelme'))
+if labelme_path not in sys.path:
+    sys.path.append(labelme_path)
+
 from labelme import __appname__
 from labelme import __version__
 from labelme.app import MainWindow

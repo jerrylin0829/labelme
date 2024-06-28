@@ -1,14 +1,17 @@
 import imgviz
+import numpy as np
 from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
-
+from scipy import ndimage
+from PyQt5.QtCore import QPointF
+from skimage.measure import label, regionprops
 import labelme.ai
 import labelme.utils
 from labelme import QT5
 from labelme.logger import logger
 from labelme.shape import Shape
-
+from ..ai._utils import compute_polygon_from_mask, compute_mask_mix_polygon
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
 
@@ -745,6 +748,7 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.addPoint(self.line[1])
             drawing_shape.fill = True
             drawing_shape.paint(p)
+            
         elif self.createMode == "ai_polygon" and self.current is not None:
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
@@ -755,6 +759,7 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
             )
+            # print(points)
             if len(points) > 2:
                 drawing_shape.setShapeRefined(
                     shape_type="polygon",
@@ -764,6 +769,7 @@ class Canvas(QtWidgets.QWidget):
                 drawing_shape.fill = self.fillDrawing()
                 drawing_shape.selected = True
                 drawing_shape.paint(p)
+
         elif self.createMode == "ai_mask" and self.current is not None:
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
@@ -774,6 +780,24 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
             )
+
+            # Compute polygons from the mask
+            polygons = compute_mask_mix_polygon(mask)
+
+            for points in polygons:
+                if len(points) > 2:
+                    # Draw each polygon as a shape
+                    polygon_shape = drawing_shape.copy()
+                    polygon_shape.setShapeRefined(
+                        shape_type="polygon",
+                        points=[QtCore.QPointF(point[0], point[1]) for point in points],
+                        point_labels=[1] * len(points),
+                    )
+                    polygon_shape.fill = self.fillDrawing()
+                    polygon_shape.selected = True
+                    polygon_shape.paint(p)
+
+            # Find the bounding box of the mask
             y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
             drawing_shape.setShapeRefined(
                 shape_type="mask",
@@ -783,7 +807,27 @@ class Canvas(QtWidgets.QWidget):
             )
             drawing_shape.selected = True
             drawing_shape.paint(p)
-
+        
+        # elif self.createMode == "ai_mask" and self.current is not None:
+        #     drawing_shape = self.current.copy()
+        #     drawing_shape.addPoint(
+        #         point=self.line.points[1],
+        #         label=self.line.point_labels[1],
+        #     )
+        #     mask = self._ai_model.predict_polygon_from_points(
+        #         points=[[point.x(), point.y()] for point in drawing_shape.points],
+        #         point_labels=drawing_shape.point_labels,
+        #     )
+        #     y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
+        #     drawing_shape.setShapeRefined(
+        #         shape_type="mask",
+        #         points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
+        #         point_labels=[1, 1],
+        #         mask=mask[y1 : y2 + 1, x1 : x2 + 1],
+        #     )
+        #     drawing_shape.selected = True
+        #     drawing_shape.paint(p)
+        
         p.end()
 
     def transformPos(self, point):
@@ -824,15 +868,55 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels,
             )
-            y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
-            self.current.setShapeRefined(
-                shape_type="mask",
-                points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
-                point_labels=[1, 1],
-                mask=mask[y1 : y2 + 1, x1 : x2 + 1],
-            )
-        self.current.close()
+            # y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
+            
+            # # Generate polygons from mask
+            # polygons = compute_mask_mix_polygon(mask)
+            # polygon_shapes = []
+            # for points in polygons:
+            #     if len(points) > 2:
+            #         polygon_shape = self.current.copy()
+            #         polygon_shape.setShapeRefined(
+            #             shape_type="polygon",
+            #             points=[QtCore.QPointF(point[0], point[1]) for point in points],
+            #             point_labels=[1] * len(points),
+            #         )
+            #         polygon_shapes.append(polygon_shape)
 
+            # # Update the current shape as a mask with bounding box
+            # self.current.setShapeRefined(
+            #     shape_type="mask",
+            #     points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
+            #     point_labels=[1, 1],
+            #     mask=mask[y1 : y2 + 1, x1 : x2 + 1],
+            # )
+
+            # # Append the polygon shapes to shapes list
+            # self.shapes.extend(polygon_shapes)
+            # Detect connected components
+            labeled_mask = label(mask)
+            regions = regionprops(labeled_mask)
+            
+            for region in regions:
+                # Get the bounding box of each connected component
+                min_row, min_col, max_row, max_col = region.bbox
+                sub_mask = (labeled_mask[min_row:max_row, min_col:max_col] == region.label)
+                
+                # Get the points for the shape
+                y1, x1, y2, x2 = min_row, min_col, max_row, max_col
+                shape_points = [QPointF(x1, y1), QPointF(x2, y2)]
+                
+                # Create a new shape for each connected component
+                new_shape = self.current.copy()
+                new_shape.setShapeRefined(
+                    shape_type="mask",
+                    points=shape_points,
+                    point_labels=[1, 1],
+                    mask=sub_mask
+                )
+                self.shapes.append(new_shape)
+
+        self.current.close()
         self.shapes.append(self.current)
         self.storeShapes()
         self.current = None

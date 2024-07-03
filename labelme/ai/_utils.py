@@ -41,7 +41,7 @@ def compute_mask_mix_polygon(mask):
     # Find contours in the mask
     contours = skimage.measure.find_contours(np.pad(mask, pad_width=1), level=0.5)
     if len(contours) == 0:
-        logger.warning("No contour found, so returning empty polygon.")
+        logger.warning("No contour found, so returning empty polygon!")
         return np.empty((0, 2), dtype=np.float32)
     
     polygons = []

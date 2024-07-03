@@ -1,11 +1,12 @@
 import imgviz
 import numpy as np
+# import cv2
 from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from scipy import ndimage
 from PyQt5.QtCore import QPointF
-from skimage.measure import label, regionprops
+from skimage.measure import label, regionprops, find_contours
 import labelme.ai
 import labelme.utils
 from labelme import QT5
@@ -49,7 +50,7 @@ class Canvas(QtWidgets.QWidget):
             raise ValueError(
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
-        self.num_backups = kwargs.pop("num_backups", 10)
+        self.num_backups = kwargs.pop("num_backups", 50)
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -439,6 +440,8 @@ class Canvas(QtWidgets.QWidget):
                         self.line.point_labels[0] = self.current.point_labels[-1]
                         if ev.modifiers() & QtCore.Qt.ControlModifier:
                             self.finalise()
+                            print("mousePressEvent-drawing")
+
                 elif not self.outOfPixmap(pos):
                     # Create new shape.
                     self.current = Shape(
@@ -449,11 +452,14 @@ class Canvas(QtWidgets.QWidget):
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if self.createMode == "point":
                         self.finalise()
+                        print("mousePressEvent-point")
                     elif (
                         self.createMode in ["ai_polygon", "ai_mask"]
                         and ev.modifiers() & QtCore.Qt.ControlModifier
                     ):
                         self.finalise()
+                        print("mousePressEvent-ai_mask")
+
                     else:
                         if self.createMode == "circle":
                             self.current.shape_type = "circle"
@@ -559,6 +565,7 @@ class Canvas(QtWidgets.QWidget):
             self.createMode == "polygon" and self.canCloseShape()
         ) or self.createMode in ["ai_polygon", "ai_mask"]:
             self.finalise()
+            print("mouseDoubleClickEvent")
 
     def selectShapes(self, shapes):
         self.setHiding()
@@ -807,27 +814,7 @@ class Canvas(QtWidgets.QWidget):
             )
             drawing_shape.selected = True
             drawing_shape.paint(p)
-        
-        # elif self.createMode == "ai_mask" and self.current is not None:
-        #     drawing_shape = self.current.copy()
-        #     drawing_shape.addPoint(
-        #         point=self.line.points[1],
-        #         label=self.line.point_labels[1],
-        #     )
-        #     mask = self._ai_model.predict_polygon_from_points(
-        #         points=[[point.x(), point.y()] for point in drawing_shape.points],
-        #         point_labels=drawing_shape.point_labels,
-        #     )
-        #     y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
-        #     drawing_shape.setShapeRefined(
-        #         shape_type="mask",
-        #         points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
-        #         point_labels=[1, 1],
-        #         mask=mask[y1 : y2 + 1, x1 : x2 + 1],
-        #     )
-        #     drawing_shape.selected = True
-        #     drawing_shape.paint(p)
-        
+    
         p.end()
 
     def transformPos(self, point):
@@ -861,6 +848,8 @@ class Canvas(QtWidgets.QWidget):
                 point_labels=[1] * len(points),
                 shape_type="polygon",
             )
+            self.shapes.append(self.current)
+            
         elif self.createMode == "ai_mask":
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
@@ -868,59 +857,28 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels,
             )
-            # y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
-            
-            # # Generate polygons from mask
-            # polygons = compute_mask_mix_polygon(mask)
-            # polygon_shapes = []
-            # for points in polygons:
-            #     if len(points) > 2:
-            #         polygon_shape = self.current.copy()
-            #         polygon_shape.setShapeRefined(
-            #             shape_type="polygon",
-            #             points=[QtCore.QPointF(point[0], point[1]) for point in points],
-            #             point_labels=[1] * len(points),
-            #         )
-            #         polygon_shapes.append(polygon_shape)
 
-            # # Update the current shape as a mask with bounding box
-            # self.current.setShapeRefined(
-            #     shape_type="mask",
-            #     points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
-            #     point_labels=[1, 1],
-            #     mask=mask[y1 : y2 + 1, x1 : x2 + 1],
-            # )
+            # Find contours using skimage
+            contours = find_contours(mask, 0.5)
+            for contour in contours:
+                if len(contour) >= 3:  # Valid polygon should have at least 3 points
+                    points = [QtCore.QPointF(point[1], point[0]) for point in contour]
 
-            # # Append the polygon shapes to shapes list
-            # self.shapes.extend(polygon_shapes)
-            # Detect connected components
-            labeled_mask = label(mask)
-            regions = regionprops(labeled_mask)
-            
-            for region in regions:
-                # Get the bounding box of each connected component
-                min_row, min_col, max_row, max_col = region.bbox
-                sub_mask = (labeled_mask[min_row:max_row, min_col:max_col] == region.label)
-                
-                # Get the points for the shape
-                y1, x1, y2, x2 = min_row, min_col, max_row, max_col
-                shape_points = [QPointF(x1, y1), QPointF(x2, y2)]
-                
-                # Create a new shape for each connected component
-                new_shape = self.current.copy()
-                new_shape.setShapeRefined(
-                    shape_type="mask",
-                    points=shape_points,
-                    point_labels=[1, 1],
-                    mask=sub_mask
-                )
-                self.shapes.append(new_shape)
+                    # Create a new shape for each connected component
+                    new_shape = self.current.copy()
+                    new_shape.setShapeRefined(
+                        shape_type="polygon",
+                        points=points,
+                        point_labels=[1] * len(points),
+                        mask=None  # Optional: you can set the mask if needed
+                    )
+                    self.shapes.append(new_shape)
 
         self.current.close()
-        self.shapes.append(self.current)
+        # self.shapes.append(self.current)
         self.storeShapes()
         self.current = None
-        self.setHiding(False)
+        self.setHiding(True)
         self.newShape.emit()
         self.update()
 
@@ -1041,6 +999,7 @@ class Canvas(QtWidgets.QWidget):
                 self.update()
             elif key == QtCore.Qt.Key_Return and self.canCloseShape():
                 self.finalise()
+                print("keyPressEvent")
             elif modifiers == QtCore.Qt.AltModifier:
                 self.snapping = False
         elif self.editing():
@@ -1068,12 +1027,16 @@ class Canvas(QtWidgets.QWidget):
                 self.movingShape = False
 
     def setLastLabel(self, text, flags):
+        if not self.shapes:
+            print("No shapes in the list!")
+            return 
+    
         assert text
         self.shapes[-1].label = text
         self.shapes[-1].flags = flags
         self.shapesBackups.pop()
         self.storeShapes()
-        return self.shapes[-1]
+        return self.shapes
 
     def undoLastLine(self):
         assert self.shapes

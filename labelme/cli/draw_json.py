@@ -2,9 +2,14 @@
 
 import argparse
 import sys
+import os
 
 import imgviz
 import matplotlib.pyplot as plt
+
+labelme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'../../..', 'labelme'))
+if labelme_path not in sys.path:
+    sys.path.append(labelme_path)
 
 from labelme import utils
 from labelme.label_file import LabelFile

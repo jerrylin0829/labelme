@@ -1026,14 +1026,18 @@ class Canvas(QtWidgets.QWidget):
 
                 self.movingShape = False
 
+    # 
     def setLastLabel(self, text, flags):
         if not self.shapes:
             print("No shapes in the list!")
             return 
-    
+
         assert text
-        self.shapes[-1].label = text
-        self.shapes[-1].flags = flags
+
+        for i, shape in enumerate(self.shapes):
+            shape.label = text
+            shape.flags = flags
+
         self.shapesBackups.pop()
         self.storeShapes()
         return self.shapes

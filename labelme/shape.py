@@ -217,6 +217,7 @@ class Shape(object):
                 assert len(self.points) in [1, 2]
                 if len(self.points) == 2:
                     rectangle = self.getRectFromLine(*self.points)
+                    print
                     line_path.addRect(rectangle)
                 if self.shape_type == "rectangle":
                     for i in range(len(self.points)):

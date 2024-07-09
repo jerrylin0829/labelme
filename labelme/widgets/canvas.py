@@ -62,6 +62,7 @@ class Canvas(QtWidgets.QWidget):
                 "linestrip": False,
                 "ai_polygon": False,
                 "ai_mask": False,
+                "ai_boundingbox": False,
             },
         )
         super(Canvas, self).__init__(*args, **kwargs)
@@ -128,6 +129,7 @@ class Canvas(QtWidgets.QWidget):
             "linestrip",
             "ai_polygon",
             "ai_mask",
+            "ai_boundingbox",
         ]:
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
@@ -248,7 +250,7 @@ class Canvas(QtWidgets.QWidget):
 
         # Polygon drawing.
         if self.drawing():
-            if self.createMode in ["ai_polygon", "ai_mask"]:
+            if self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
                 self.line.shape_type = "points"
             else:
                 self.line.shape_type = self.createMode
@@ -276,7 +278,7 @@ class Canvas(QtWidgets.QWidget):
             if self.createMode in ["polygon", "linestrip"]:
                 self.line.points = [self.current[-1], pos]
                 self.line.point_labels = [1, 1]
-            elif self.createMode in ["ai_polygon", "ai_mask"]:
+            elif self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
                 self.line.points = [self.current.points[-1], pos]
                 self.line.point_labels = [
                     self.current.point_labels[-1],
@@ -431,7 +433,7 @@ class Canvas(QtWidgets.QWidget):
                         self.line[0] = self.current[-1]
                         if int(ev.modifiers()) == QtCore.Qt.ControlModifier:
                             self.finalise()
-                    elif self.createMode in ["ai_polygon", "ai_mask"]:
+                    elif self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
                         self.current.addPoint(
                             self.line.points[1],
                             label=self.line.point_labels[1],
@@ -440,32 +442,29 @@ class Canvas(QtWidgets.QWidget):
                         self.line.point_labels[0] = self.current.point_labels[-1]
                         if ev.modifiers() & QtCore.Qt.ControlModifier:
                             self.finalise()
-                            print("mousePressEvent-drawing")
 
                 elif not self.outOfPixmap(pos):
                     # Create new shape.
                     self.current = Shape(
                         shape_type="points"
-                        if self.createMode in ["ai_polygon", "ai_mask"]
+                        if self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
                         else self.createMode
                     )
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if self.createMode == "point":
                         self.finalise()
-                        print("mousePressEvent-point")
                     elif (
-                        self.createMode in ["ai_polygon", "ai_mask"]
+                        self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
                         and ev.modifiers() & QtCore.Qt.ControlModifier
                     ):
                         self.finalise()
-                        print("mousePressEvent-ai_mask")
 
                     else:
                         if self.createMode == "circle":
                             self.current.shape_type = "circle"
                         self.line.points = [pos, pos]
                         if (
-                            self.createMode in ["ai_polygon", "ai_mask"]
+                            self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
                             and is_shift_pressed
                         ):
                             self.line.point_labels = [0, 0]
@@ -554,7 +553,7 @@ class Canvas(QtWidgets.QWidget):
     def canCloseShape(self):
         return self.drawing() and (
             (self.current and len(self.current) > 2)
-            or self.createMode in ["ai_polygon", "ai_mask"]
+            or self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
         )
 
     def mouseDoubleClickEvent(self, ev):
@@ -563,9 +562,8 @@ class Canvas(QtWidgets.QWidget):
 
         if (
             self.createMode == "polygon" and self.canCloseShape()
-        ) or self.createMode in ["ai_polygon", "ai_mask"]:
+        ) or self.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
             self.finalise()
-            print("mouseDoubleClickEvent")
 
     def selectShapes(self, shapes):
         self.setHiding()
@@ -704,7 +702,6 @@ class Canvas(QtWidgets.QWidget):
         p.translate(self.offsetToCenter())
 
         p.drawPixmap(0, 0, self.pixmap)
-
         # draw crosshair
         if (
             self._crosshair[self._createMode]
@@ -814,6 +811,48 @@ class Canvas(QtWidgets.QWidget):
             )
             drawing_shape.selected = True
             drawing_shape.paint(p)
+        
+        elif self.createMode == "ai_boundingbox" and self.current is not None:
+            drawing_shape = self.current.copy()
+            drawing_shape.addPoint(
+                point=self.line.points[1],
+                label=self.line.point_labels[1],
+            )
+            mask = self._ai_model.predict_mask_from_points(
+                points=[[point.x(), point.y()] for point in drawing_shape.points],
+                point_labels=drawing_shape.point_labels,
+            )
+
+            # Compute bounding boxes for each object in the mask
+            bounding_boxes = imgviz.instances.masks_to_bboxes([mask])
+
+            for box in bounding_boxes:
+                y1, x1, y2, x2 = box.astype(int)
+                bounding_box_points = [
+                    QtCore.QPointF(x1, y1),
+                    QtCore.QPointF(x2, y2),
+                ]
+
+                # Draw the bounding box as a shape
+                bounding_box_shape = drawing_shape.copy()
+                bounding_box_shape.setShapeRefined(
+                    shape_type="mask",
+                    points=bounding_box_points,
+                    point_labels=[1, 1],
+                    mask=mask[y1 : y2 + 1, x1 : x2 + 1],
+                )
+
+                # Find the bounding box of the mask
+                y1, x1, y2, x2 = imgviz.instances.masks_to_bboxes([mask])[0].astype(int)
+                drawing_shape.setShapeRefined(
+                    shape_type="mask",
+                    points=[QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)],
+                    point_labels=[1, 1],
+                    mask=mask[y1 : y2 + 1, x1 : x2 + 1],
+                )
+
+                bounding_box_shape.selected = True
+                bounding_box_shape.paint(p)
     
         p.end()
 
@@ -873,6 +912,56 @@ class Canvas(QtWidgets.QWidget):
                         mask=None  # Optional: you can set the mask if needed
                     )
                     self.shapes.append(new_shape)
+
+        elif self.createMode == "ai_boundingbox":
+            # convert points to mask by an AI model
+            assert self.current.shape_type == "points"
+            mask = self._ai_model.predict_mask_from_points(
+                points=[[point.x(), point.y()] for point in self.current.points],
+                point_labels=self.current.point_labels,
+            )
+            
+            # Detect connected components
+            '''explain the label function'''
+            '''
+            input:
+            binary_mask = np.array([
+                [0, 0, 1, 1, 0],
+                [0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [1, 1, 0, 1, 1],
+            ])
+            output:
+            [[0 0 1 1 0]
+             [0 1 1 0 0]
+             [0 0 0 0 0]
+             [2 2 0 0 0]
+             [2 2 0 3 3]]
+            '''
+            labeled_mask = label(mask)
+
+            # this function can calculate the bounding box, area, and perimeter of the region
+            regions = regionprops(labeled_mask)
+            
+            for region in regions:
+                # Get the bounding box of each connected component
+                min_row, min_col, max_row, max_col = region.bbox
+                sub_mask = (labeled_mask[min_row:max_row, min_col:max_col] == region.label)
+                
+                # Get the points for the shape
+                y1, x1, y2, x2 = min_row, min_col, max_row, max_col
+                shape_points = [QPointF(x1, y1), QPointF(x2, y2)]
+                
+                # Create a new shape for each connected component
+                new_shape = self.current.copy()
+                new_shape.setShapeRefined(
+                    shape_type="mask",
+                    points=shape_points,
+                    point_labels=[1, 1],
+                    mask=sub_mask
+                )
+                self.shapes.append(new_shape)
 
         self.current.close()
         # self.shapes.append(self.current)

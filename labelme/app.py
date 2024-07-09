@@ -379,6 +379,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode == "ai_polygon"
             else None
         )
+
         createAiMaskMode = action(
             self.tr("Create AI-Mask"),
             lambda: self.toggleDrawMode(False, createMode="ai_mask"),
@@ -394,6 +395,23 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode == "ai_mask"
             else None
         )
+
+        createAiBoundingBoxMode = action(
+            self.tr("Create AI-BoundingBox"),
+            lambda: self.toggleDrawMode(False, createMode="ai_boundingbox"),
+            None,
+            "objects",
+            self.tr("Start drawing ai_boundingbox. Ctrl+LeftClick ends creation."),
+            enabled=False,
+        )
+        createAiBoundingBoxMode.changed.connect(
+            lambda: self.canvas.initializeAiModel(
+                name=self._selectAiModelComboBox.currentText()
+            )
+            if self.canvas.createMode == "ai_boundingbox"
+            else None
+        )
+
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -647,6 +665,10 @@ class MainWindow(QtWidgets.QMainWindow):
             createLineStripMode=createLineStripMode,
             createAiPolygonMode=createAiPolygonMode,
             createAiMaskMode=createAiMaskMode,
+
+            # Add this action to the menu
+            createAiBoundingBoxMode=createAiBoundingBoxMode,
+            
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -685,6 +707,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineStripMode,
                 createAiPolygonMode,
                 createAiMaskMode,
+
+                # Add this action to the menu
+                createAiBoundingBoxMode,
+
                 editMode,
                 edit,
                 duplicate,
@@ -705,6 +731,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineStripMode,
                 createAiPolygonMode,
                 createAiMaskMode,
+
+                # Add this action to the menu
+                createAiBoundingBoxMode,
+
                 editMode,
                 brightnessContrast,
             ),
@@ -805,7 +835,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText()
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask"]
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
 
@@ -933,6 +963,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createLineStripMode,
             self.actions.createAiPolygonMode,
             self.actions.createAiMaskMode,
+            self.actions.createAiBoundingBoxMode,
             self.actions.editMode,
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)
@@ -966,6 +997,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.createLineStripMode.setEnabled(True)
         self.actions.createAiPolygonMode.setEnabled(True)
         self.actions.createAiMaskMode.setEnabled(True)
+        self.actions.createAiBoundingBoxMode.setEnabled(True)
         title = __appname__
         if self.filename is not None:
             title = "{} - {}".format(title, self.filename)
@@ -1043,6 +1075,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "linestrip": self.actions.createLineStripMode,
             "ai_polygon": self.actions.createAiPolygonMode,
             "ai_mask": self.actions.createAiMaskMode,
+            "ai_boundingbox": self.actions.createAiBoundingBoxMode,
         }
 
         self.canvas.setEditing(edit)
@@ -1239,7 +1272,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected)
 
-    def addLabel(self, shape):
+    def addLabel(self, shape): 
         if shape.group_id is None:
             text = shape.label
         else:
@@ -1457,12 +1490,12 @@ class MainWindow(QtWidgets.QMainWindow):
         flags = {}
         group_id = None
         description = ""
+
         if self._config["display_label_popup"] or not text:
             previous_text = self.labelDialog.edit.text()
             text, flags, group_id, description = self.labelDialog.popUp(text)
             if not text:
                 self.labelDialog.edit.setText(previous_text)
-
         if text and not self.validateLabel(text):
             self.errorMessage(
                 self.tr("Invalid label"),
@@ -1473,10 +1506,16 @@ class MainWindow(QtWidgets.QMainWindow):
             text = ""
         if text:
             self.labelList.clearSelection()
-            shape = self.canvas.setLastLabel(text, flags)
-            shape.group_id = group_id
-            shape.description = description
-            self.addLabel(shape)
+            shapes = self.canvas.setLastLabel(text, flags)
+            if shapes is None:
+                print("No shapes were labeled.")
+                return
+        
+            # print("shape: ", shapes)
+            for shape in shapes:
+                shape.group_id = group_id
+                shape.description = description
+                self.addLabel(shape)
             self.actions.editMode.setEnabled(True)
             self.actions.undoLastPoint.setEnabled(False)
             self.actions.undo.setEnabled(True)

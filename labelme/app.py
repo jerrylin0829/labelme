@@ -1483,6 +1483,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         position MUST be in global coordinates.
         """
+
         items = self.uniqLabelList.selectedItems()
         text = None
         if items:
@@ -1508,10 +1509,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.labelList.clearSelection()
             shapes = self.canvas.setLastLabel(text, flags)
             if shapes is None:
-                print("No shapes were labeled.")
+                logger.warning("No shapes were labeled.")
                 return
         
-            # print("shape: ", shapes)
             for shape in shapes:
                 shape.group_id = group_id
                 shape.description = description

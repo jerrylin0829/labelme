@@ -70,7 +70,7 @@ canvas:
   # close: close polygon
   double_click: close
   # The max number of edits we can undo
-  num_backups: 10
+  num_backups: 30
   # show crosshair
   crosshair:
     polygon: false
@@ -81,6 +81,7 @@ canvas:
     linestrip: false
     ai_polygon: false
     ai_mask: false
+    ai_boundingbox: false
 
 shortcuts:
   close: Ctrl+W

@@ -6,7 +6,7 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from scipy import ndimage
 from PyQt5.QtCore import QPointF
-from skimage.measure import label, regionprops, find_contours
+from skimage.measure import label, regionprops, find_contours, approximate_polygon
 import labelme.ai
 import labelme.utils
 from labelme import QT5
@@ -69,8 +69,10 @@ class Canvas(QtWidgets.QWidget):
         # Initialise local state.
         self.mode = self.EDIT
         self.shapes = []
+        self.shapes_num = None
         self.shapesBackups = []
         self.current = None
+        self.new_shape = None
         self.selectedShapes = []  # save the selected shapes here
         self.selectedShapesCopy = []
         # self.line represents:
@@ -153,6 +155,12 @@ class Canvas(QtWidgets.QWidget):
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
 
+    def getShapesNum(self):
+        return self.shapes_num
+
+    def setShapesNum(self, num):
+        self.shapes_num = num
+            
     def storeShapes(self):
         shapesBackup = []
         for shape in self.shapes:
@@ -763,7 +771,6 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
             )
-            # print(points)
             if len(points) > 2:
                 drawing_shape.setShapeRefined(
                     shape_type="polygon",
@@ -773,7 +780,7 @@ class Canvas(QtWidgets.QWidget):
                 drawing_shape.fill = self.fillDrawing()
                 drawing_shape.selected = True
                 drawing_shape.paint(p)
-
+            
         elif self.createMode == "ai_mask" and self.current is not None:
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
@@ -853,7 +860,6 @@ class Canvas(QtWidgets.QWidget):
 
                 bounding_box_shape.selected = True
                 bounding_box_shape.paint(p)
-    
         p.end()
 
     def transformPos(self, point):
@@ -875,6 +881,9 @@ class Canvas(QtWidgets.QWidget):
 
     def finalise(self):
         assert self.current
+
+        self.setShapesNum(len(self.shapes))
+                          
         if self.createMode == "ai_polygon":
             # convert points to polygon by an AI model
             assert self.current.shape_type == "points"
@@ -887,6 +896,7 @@ class Canvas(QtWidgets.QWidget):
                 point_labels=[1] * len(points),
                 shape_type="polygon",
             )
+            self.current.close()
             self.shapes.append(self.current)
             
         elif self.createMode == "ai_mask":
@@ -901,18 +911,25 @@ class Canvas(QtWidgets.QWidget):
             contours = find_contours(mask, 0.5)
             for contour in contours:
                 if len(contour) >= 3:  # Valid polygon should have at least 3 points
-                    points = [QtCore.QPointF(point[1], point[0]) for point in contour]
+                    POLYGON_APPROX_TOLERANCE = 0.004  # Increase to reduce points
+                    polygon = approximate_polygon(
+                        coords=contour,
+                        tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                    )
+                    polygon = polygon[:-1]  # drop last point that is duplicate of first point
+
+                    points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
 
                     # Create a new shape for each connected component
-                    new_shape = self.current.copy()
-                    new_shape.setShapeRefined(
+                    self.new_shape = self.current.copy()
+                    self.new_shape.setShapeRefined(
                         shape_type="polygon",
                         points=points,
                         point_labels=[1] * len(points),
                         mask=None  # Optional: you can set the mask if needed
                     )
-                    self.shapes.append(new_shape)
-
+                    self.shapes.append(self.new_shape)
+        
         elif self.createMode == "ai_boundingbox":
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
@@ -954,23 +971,25 @@ class Canvas(QtWidgets.QWidget):
                 shape_points = [QPointF(x1, y1), QPointF(x2, y2)]
                 
                 # Create a new shape for each connected component
-                new_shape = self.current.copy()
-                new_shape.setShapeRefined(
+                self.new_shape = self.current.copy()
+                self.new_shape.setShapeRefined(
                     shape_type="mask",
                     points=shape_points,
                     point_labels=[1, 1],
                     mask=sub_mask
                 )
-                self.shapes.append(new_shape)
+                self.shapes.append(self.new_shape)
 
-        self.current.close()
-        # self.shapes.append(self.current)
+        
         self.storeShapes()
         self.current = None
         self.setHiding(True)
         self.newShape.emit()
         self.update()
+        # print("finalise's shape: ", self.shapes)
 
+    
+    
     def closeEnough(self, p1, p2):
         # d = distance(p1 - p2)
         # m = (p1-p2).manhattanLength()
@@ -1115,21 +1134,22 @@ class Canvas(QtWidgets.QWidget):
 
                 self.movingShape = False
 
-    # 
+    
     def setLastLabel(self, text, flags):
         if not self.shapes:
-            print("No shapes in the list!")
+            logger.warning("No shapes in the list!")
             return 
 
         assert text
-
         for i, shape in enumerate(self.shapes):
             shape.label = text
             shape.flags = flags
-
-        self.shapesBackups.pop()
-        self.storeShapes()
-        return self.shapes
+            self.shapesBackups.pop()
+            self.storeShapes()
+        
+        new_shape_idx = self.getShapesNum()
+        return self.shapes[new_shape_idx:]
+        
 
     def undoLastLine(self):
         assert self.shapes

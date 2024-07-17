@@ -13,14 +13,24 @@ from . import _utils
 class EfficientSam:
     def __init__(self, encoder_path, decoder_path):
 
-        providers = _utils.get_available_providers()
-        self._encoder_session = ort.InferenceSession(encoder_path, providers=providers)
-        self._decoder_session = ort.InferenceSession(decoder_path, providers=providers)
+        providers = _utils.get_available_providers() ## added by Alvin
+
+        self._encoder_path = encoder_path ## added by Alvin
+        self._decoder_path = decoder_path ## added by Alvin
+
+        self._encoder_session = ort.InferenceSession(self._encoder_path, providers=providers) ## added by Alvin
+        self._decoder_session = ort.InferenceSession(self._decoder_path, providers=providers) ## added by Alvin
 
         self._lock = threading.Lock()
         self._image_embedding_cache = collections.OrderedDict()
 
         self._thread = None
+
+    def set_providers(self,provider): ## added by Alvin
+        providers = _utils.set_providers(provider)
+        self._encoder_session = ort.InferenceSession(self._encoder_path,providers=providers)
+        self._decoder_session = ort.InferenceSession(self._decoder_path,providers=providers)
+        logger.info("Mode is modified")
 
     def set_image(self, image: np.ndarray):
         with self._lock:

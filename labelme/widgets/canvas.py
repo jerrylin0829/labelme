@@ -154,6 +154,8 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.set_image(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+    def changeAiRunMode(self,mode): ## added by Alvin
+        self._ai_model.set_providers(mode)
 
     def getShapesNum(self):
         return self.shapes_num

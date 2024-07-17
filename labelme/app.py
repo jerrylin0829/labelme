@@ -35,7 +35,7 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from . import utils
-
+from labelme.ai import RUN_MODES
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -820,6 +820,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #
         self._selectAiModelComboBox = QtWidgets.QComboBox()
         selectAiModel.defaultWidget().layout().addWidget(self._selectAiModelComboBox)
+
         model_names = [model.name for model in MODELS]
         self._selectAiModelComboBox.addItems(model_names)
         if self._config["ai"]["default"] in model_names:
@@ -835,6 +836,32 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText()
             )
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
+            else None
+        )
+        ## added by Alvin
+        selectRunMode = QtWidgets.QWidgetAction(self)
+        selectRunMode.setDefaultWidget(QtWidgets.QWidget())
+        selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+        ## added by Alvin
+        selectRunModeLabel = QtWidgets.QLabel(self.tr("Run Mode"))
+        selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
+        selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
+
+        ## added by Alvin
+        self._selectRunModeComboBox = QtWidgets.QComboBox()
+        selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
+        self._selectRunModeComboBox.addItems(RUN_MODES)
+
+        mode_index = 0
+        self._selectRunModeComboBox.setCurrentIndex(mode_index)
+
+        logger.info(f'{self._selectRunModeComboBox.currentText()}')
+
+        self._selectRunModeComboBox.currentIndexChanged.connect(
+            lambda: self.canvas.changeAiRunMode(
+                self._selectRunModeComboBox.currentText()
+            )                                    
             if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
@@ -859,6 +886,7 @@ class MainWindow(QtWidgets.QMainWindow):
             zoom,
             None,
             selectAiModel,
+            selectRunMode
         )
 
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)

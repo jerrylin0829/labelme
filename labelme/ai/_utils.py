@@ -17,20 +17,13 @@ def get_available_providers(): ## added by Alvin
     logger.info("CUDAExecutionProvider is not available, using CPUExecutionProvider.")
     return ['CPUExecutionProvider']
 
+
 def set_providers(mode): ## added by Alvin
     if mode == "CUDA":
-        try:
-            providers = ort.get_available_providers()
-            logger.info(f"Available providers: {providers}")
-            if 'CUDAExecutionProvider' in providers:
-                logger.info("CUDAExecutionProvider is available and will be used.")
-                return ['CUDAExecutionProvider']
-        except Exception as e:
-            logger.warning(f"Error checking GPU availability: {e}")
+        logger.info("CUDA Mode Selected : CPUExecutionProvider is available and will be used.")
+        return get_available_providers()
     else:
-        logger.info(f"Mode '{mode}' is not recognized, defaulting to CPUExecutionProvider.")
-        
-    logger.info("CUDAExecutionProvider is not available or mode is not 'cuda', using CPUExecutionProvider.")
+        logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
     return ['CPUExecutionProvider']
 
   

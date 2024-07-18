@@ -20,9 +20,8 @@ def get_available_providers(): ## added by Alvin
 
 def set_providers(mode): ## added by Alvin
     if mode == "CUDA":
-        logger.info("CUDA Mode Selected : CPUExecutionProvider is available and will be used.")
         return get_available_providers()
-    else:
+    elif mode == "CPU":
         logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
     return ['CPUExecutionProvider']
 

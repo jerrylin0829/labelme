@@ -26,6 +26,7 @@ def get_install_requires():
         "matplotlib",
         "natsort>=7.1.0",
         "numpy<2.0.0",
+        "onnxruntime",
         "onnxruntime-gpu", ## added by Alvin
         "Pillow>=2.8",
         "PyYAML",
@@ -69,7 +70,7 @@ def get_install_requires():
 
 
 def get_long_description():
-    with open("README.md") as f:
+    with open("README.md",'r', encoding='utf8') as f:
         long_description = f.read()
     try:
         # when this package is being released

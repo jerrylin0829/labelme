@@ -55,7 +55,7 @@ class Canvas(QtWidgets.QWidget):
             "crosshair",
             {
                 "polygon": False,
-                "rectangle": True,
+                "rectangle": False,
                 "circle": False,
                 "line": False,
                 "point": False,
@@ -182,6 +182,7 @@ class Canvas(QtWidgets.QWidget):
         # This does _part_ of the job of restoring shapes.
         # The complete process is also done in app.py::undoShapeEdit
         # and app.py::loadShapes and our own Canvas::loadShapes function.
+
         if not self.isShapeRestorable:
             return
         self.shapesBackups.pop()  # latest
@@ -192,6 +193,7 @@ class Canvas(QtWidgets.QWidget):
         self.shapes = shapesBackup
         self.selectedShapes = []
         for shape in self.shapes:
+            # print(shape.label) #這邊就是錯誤的: r r p p, undo一個label後變成 p p p
             shape.selected = False
         self.update()
 
@@ -979,15 +981,18 @@ class Canvas(QtWidgets.QWidget):
                     mask=sub_mask
                 )
                 self.shapes.append(self.new_shape)
+            
+        else:
+            self.current.close()
+            self.shapes.append(self.current)
 
-        
         self.storeShapes()
         self.current = None
         self.setHiding(True)
         self.newShape.emit()
         self.update()
-        # print("finalise's shape: ", self.shapes)
-
+        # for shape in self.shapes:
+        #     print("finalise: ", shape.label)
     
     
     def closeEnough(self, p1, p2):
@@ -1107,7 +1112,6 @@ class Canvas(QtWidgets.QWidget):
                 self.update()
             elif key == QtCore.Qt.Key_Return and self.canCloseShape():
                 self.finalise()
-                print("keyPressEvent")
             elif modifiers == QtCore.Qt.AltModifier:
                 self.snapping = False
         elif self.editing():
@@ -1141,13 +1145,13 @@ class Canvas(QtWidgets.QWidget):
             return 
 
         assert text
-        for i, shape in enumerate(self.shapes):
+        new_shape_idx = self.getShapesNum()
+        for i, shape in enumerate(self.shapes[new_shape_idx:]):
             shape.label = text
             shape.flags = flags
             self.shapesBackups.pop()
             self.storeShapes()
         
-        new_shape_idx = self.getShapesNum()
         return self.shapes[new_shape_idx:]
         
 

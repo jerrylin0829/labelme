@@ -50,7 +50,7 @@ class Canvas(QtWidgets.QWidget):
             raise ValueError(
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
-        self.num_backups = kwargs.pop("num_backups", 50)
+        self.num_backups = kwargs.pop("num_backups", 100)
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -198,7 +198,6 @@ class Canvas(QtWidgets.QWidget):
         self.shapes = shapesBackup
         self.selectedShapes = []
         for shape in self.shapes:
-            # print(shape.label) #這邊就是錯誤的: r r p p, undo一個label後變成 p p p
             shape.selected = False
         self.update()
 
@@ -996,8 +995,6 @@ class Canvas(QtWidgets.QWidget):
         self.setHiding(True)
         self.newShape.emit()
         self.update()
-        # for shape in self.shapes:
-        #     print("finalise: ", shape.label)
     
     
     def closeEnough(self, p1, p2):

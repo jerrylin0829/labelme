@@ -136,7 +136,7 @@ class Canvas(QtWidgets.QWidget):
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
 
-    def initializeAiModel(self, name):
+    def initializeAiModel(self, name ):
         if name not in [model.name for model in labelme.ai.MODELS]:
             raise ValueError("Unsupported ai model: %s" % name)
         model = [model for model in labelme.ai.MODELS if model.name == name][0]
@@ -154,7 +154,12 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.set_image(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+    def changeAiRunMode(self,mode): ## added by Alvin
+        self._ai_model.set_providers(mode)
 
+    def getRunMode(self): ## added by Alvin
+        return self._ai_model.get_runMode()
+    
     def getShapesNum(self):
         return self.shapes_num
 

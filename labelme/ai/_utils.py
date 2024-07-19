@@ -2,9 +2,30 @@ import imgviz
 import numpy as np
 import skimage
 
+import onnxruntime as ort
 from labelme.logger import logger
 
+def get_available_providers(): ## added by Alvin
+    try:
+        providers = ort.get_available_providers()
+        logger.info(f"Available providers: {providers}")
+        if 'CUDAExecutionProvider' in providers:
+            logger.info("CUDAExecutionProvider is available and will be used.")
+            return ['CUDAExecutionProvider']
+    except Exception as e:
+        logger.warning(f"Error checking GPU availability: {e}")
+    logger.info("CUDAExecutionProvider is not available, using CPUExecutionProvider.")
+    return ['CPUExecutionProvider']
 
+
+def set_providers(mode): ## added by Alvin
+    if mode == "CUDA":
+        return get_available_providers()
+    elif mode == "CPU":
+        logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
+    return ['CPUExecutionProvider']
+
+  
 def _get_contour_length(contour):
     contour_start = contour
     contour_end = np.r_[contour[1:], contour[0:1]]

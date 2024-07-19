@@ -16,6 +16,7 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt
 
+
 from labelme import PY2
 from labelme import __appname__
 from labelme.ai import MODELS
@@ -35,7 +36,8 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from . import utils
-
+from labelme.ai import RUN_MODES
+from labelme.ai import _utils  ## added by alvin
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -408,7 +410,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText()
             )
-            if self.canvas.createMode == "ai_boundingbox"
+            if self.canvas.createMode == "ai_boundingbox" 
             else None
         )
 
@@ -820,6 +822,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #
         self._selectAiModelComboBox = QtWidgets.QComboBox()
         selectAiModel.defaultWidget().layout().addWidget(self._selectAiModelComboBox)
+
         model_names = [model.name for model in MODELS]
         self._selectAiModelComboBox.addItems(model_names)
         if self._config["ai"]["default"] in model_names:
@@ -833,12 +836,39 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox.setCurrentIndex(model_index)
         self._selectAiModelComboBox.currentIndexChanged.connect(
             lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
+                name=self._selectAiModelComboBox.currentText(),
             )
             if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
+        ## added by Alvin
+        selectRunMode = QtWidgets.QWidgetAction(self)
+        selectRunMode.setDefaultWidget(QtWidgets.QWidget())
+        selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+        ## added by Alvin
+        selectRunModeLabel = QtWidgets.QLabel(self.tr("Run Mode"))
+        selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
+        selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
 
+        ## added by Alvin
+        self._selectRunModeComboBox = QtWidgets.QComboBox()
+        selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
+        self._selectRunModeComboBox.addItems(RUN_MODES)
+        
+        provider = _utils.get_available_providers()
+        mode_index = 0 if provider[0] == 'CUDAExecutionProvider' else 1
+        self._selectRunModeComboBox.setCurrentIndex(mode_index)
+
+        logger.info(f'{self._selectRunModeComboBox.currentText()}')
+
+        self._selectRunModeComboBox.currentIndexChanged.connect(
+            lambda: self.canvas.changeAiRunMode(
+                self._selectRunModeComboBox.currentText()
+            )                                    
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
+            else None
+        )
+        
         self.tools = self.toolbar("Tools")
         self.actions.tool = (
             open_,
@@ -859,6 +889,7 @@ class MainWindow(QtWidgets.QMainWindow):
             zoom,
             None,
             selectAiModel,
+            selectRunMode
         )
 
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
@@ -931,6 +962,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if actions:
             utils.addActions(menu, actions)
         return menu
+    
 
     def toolbar(self, title, actions=None):
         toolbar = ToolBar(title)
@@ -1079,7 +1111,6 @@ class MainWindow(QtWidgets.QMainWindow):
             "ai_mask": self.actions.createAiMaskMode,
             "ai_boundingbox": self.actions.createAiBoundingBoxMode,
         }
-
         self.canvas.setEditing(edit)
         self.canvas.createMode = createMode
         if edit:
@@ -1631,7 +1662,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.fileListWidget.setCurrentRow(self.imageList.index(filename))
             self.fileListWidget.repaint()
             return
-
         self.resetState()
         self.canvas.setEnabled(False)
         if filename is None:
@@ -1803,7 +1833,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.setValue("recentFiles", self.recentFiles)
         # ask the use for where to save the labels
         # self.settings.setValue('window/geometry', self.saveGeometry())
-
     def dragEnterEvent(self, event):
         extensions = [
             ".%s" % fmt.data().decode().lower()

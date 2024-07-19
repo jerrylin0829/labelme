@@ -17,7 +17,7 @@ def get_version():
         raise RuntimeError("{} doesn't contain __version__".format(filename))
     version = match.groups()[0]
     return version
-
+    
 def get_install_requires():
     install_requires = [
         "gdown",
@@ -37,44 +37,30 @@ def get_install_requires():
     # and PyQt5 is automatically installed on Python3.
     QT_BINDING = None
 
-    try:
-        import PyQt5  # NOQA
-        QT_BINDING = "pyqt5"
-    except ImportError:
-        pass
-
-    if QT_BINDING is None:
+    for binding in ["PyQt5", "PySide2"]:
         try:
-            import PySide2  # NOQA
-            QT_BINDING = "pyside2"
+            __import__(binding)
+            QT_BINDING = binding.lower()
+            break
         except ImportError:
-            pass
+            continue
 
     if QT_BINDING is None:
         # PyQt5 can be installed via pip for Python3
         # 5.15.3, 5.15.4 won't work with PyInstaller
         install_requires.append("PyQt5!=5.15.3,!=5.15.4")
-        QT_BINDING = "pyqt5"
-
-    del QT_BINDING
 
     if os.name == "nt":  # Windows
         install_requires.append("colorama")
-
+    #added by alvin
+    # Check if CUDA is available
     try:
-        result = subprocess.run(['nvcc', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if result.returncode == 0:
-            cuda_installed = True
-        else:
-            cuda_installed = False
-    except FileNotFoundError:
+        subprocess.run(['nvcc', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cuda_installed = True
+    except (subprocess.CalledProcessError, FileNotFoundError):
         cuda_installed = False
 
-    if cuda_installed:
-        install_requires.append("onnxruntime-gpu")
-    else:
-        install_requires.append("onnxruntime")
-
+    install_requires.append("onnxruntime-gpu" if cuda_installed else "onnxruntime")
     return install_requires
     
 def get_long_description():

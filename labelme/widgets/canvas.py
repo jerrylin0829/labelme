@@ -1156,7 +1156,6 @@ class Canvas(QtWidgets.QWidget):
             shape.flags = flags
             self.shapesBackups.pop()
             self.storeShapes()
-        print("fffff")
         return self.shapes[new_shape_idx:]
         
 

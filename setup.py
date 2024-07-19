@@ -26,7 +26,6 @@ def get_install_requires():
         "matplotlib",
         "natsort>=7.1.0",
         "numpy<2.0.0",
-        "onnxruntime",
         "onnxruntime-gpu", ## added by Alvin
         "Pillow>=2.8",
         "PyYAML",

@@ -18,7 +18,6 @@ def get_version():
     version = match.groups()[0]
     return version
 
-
 def get_install_requires():
     install_requires = [
         "gdown",
@@ -26,7 +25,6 @@ def get_install_requires():
         "matplotlib",
         "natsort>=7.1.0",
         "numpy<2.0.0",
-        "onnxruntime-gpu", ## added by Alvin
         "Pillow>=2.8",
         "PyYAML",
         "qtpy!=1.11.2",
@@ -41,7 +39,6 @@ def get_install_requires():
 
     try:
         import PyQt5  # NOQA
-
         QT_BINDING = "pyqt5"
     except ImportError:
         pass
@@ -49,7 +46,6 @@ def get_install_requires():
     if QT_BINDING is None:
         try:
             import PySide2  # NOQA
-
             QT_BINDING = "pyside2"
         except ImportError:
             pass
@@ -65,9 +61,22 @@ def get_install_requires():
     if os.name == "nt":  # Windows
         install_requires.append("colorama")
 
+    try:
+        result = subprocess.run(['nvcc', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            cuda_installed = True
+        else:
+            cuda_installed = False
+    except FileNotFoundError:
+        cuda_installed = False
+
+    if cuda_installed:
+        install_requires.append("onnxruntime-gpu")
+    else:
+        install_requires.append("onnxruntime")
+
     return install_requires
-
-
+    
 def get_long_description():
     with open("README.md",'r', encoding='utf8') as f:
         long_description = f.read()

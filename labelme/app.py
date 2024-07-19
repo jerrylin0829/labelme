@@ -1046,6 +1046,8 @@ class MainWindow(QtWidgets.QMainWindow):
     # Callbacks
 
     def undoShapeEdit(self):
+        for shape in self.canvas.shapes:
+            print("undo: ", shape.label)
         self.canvas.restoreShape()
         self.labelList.clear()
         self.loadShapes(self.canvas.shapes)
@@ -1272,7 +1274,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected)
 
-    def addLabel(self, shape): 
+    def addLabel(self, shape):
         if shape.group_id is None:
             text = shape.label
         else:
@@ -1505,6 +1507,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 ),
             )
             text = ""
+
         if text:
             self.labelList.clearSelection()
             shapes = self.canvas.setLastLabel(text, flags)
@@ -1516,10 +1519,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 shape.group_id = group_id
                 shape.description = description
                 self.addLabel(shape)
+            
             self.actions.editMode.setEnabled(True)
             self.actions.undoLastPoint.setEnabled(False)
             self.actions.undo.setEnabled(True)
             self.setDirty()
+
         else:
             self.canvas.undoLastLine()
             self.canvas.shapesBackups.pop()

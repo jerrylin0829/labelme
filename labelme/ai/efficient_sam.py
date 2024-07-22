@@ -32,7 +32,7 @@ class EfficientSam:
         self._encoder_session = ort.InferenceSession(self._encoder_path,providers=providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path,providers=providers)
         
-        self.set_runMmode(providers)
+        self.set_runMode(providers)
         logger.info("Mode is modified")
         
     def set_runMode(self,device):## added by Alvin

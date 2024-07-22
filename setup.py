@@ -55,7 +55,8 @@ def get_install_requires():
     #added by alvin
     # Check if CUDA is available
     try:
-        subprocess.run(['nvcc', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(['nvcc', '--version'], check=True, 
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cuda_installed = True
     except (subprocess.CalledProcessError, FileNotFoundError):
         cuda_installed = False

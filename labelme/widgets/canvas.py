@@ -1,18 +1,24 @@
 import imgviz
 import numpy as np
+from PyQt5.QtCore import QPointF
+
 # import cv2
 from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
-from scipy import ndimage
-from PyQt5.QtCore import QPointF
-from skimage.measure import label, regionprops, find_contours, approximate_polygon
+from skimage.measure import approximate_polygon
+from skimage.measure import find_contours
+from skimage.measure import label
+from skimage.measure import regionprops
+
 import labelme.ai
 import labelme.utils
 from labelme import QT5
 from labelme.logger import logger
 from labelme.shape import Shape
-from ..ai._utils import compute_polygon_from_mask, compute_mask_mix_polygon
+
+from ..ai._utils import compute_mask_mix_polygon
+
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
 
@@ -970,7 +976,8 @@ class Canvas(QtWidgets.QWidget):
             for region in regions:
                 # Get the bounding box of each connected component
                 min_row, min_col, max_row, max_col = region.bbox
-                sub_mask = (labeled_mask[min_row:max_row, min_col:max_col] == region.label)
+                sub_mask = (labeled_mask[min_row:max_row, 
+                            min_col:max_col] == region.label)
                 
                 # Get the points for the shape
                 y1, x1, y2, x2 = min_row, min_col, max_row, max_col

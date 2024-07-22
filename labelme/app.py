@@ -16,10 +16,11 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt
 
-
 from labelme import PY2
 from labelme import __appname__
-from labelme.ai import MODELS
+from labelme.ai import MODEL_DEFAULT
+from labelme.ai import RUN_MODES
+from labelme.ai import _utils  ## added by alvin
 from labelme.config import get_config
 from labelme.label_file import LabelFile
 from labelme.label_file import LabelFileError
@@ -36,8 +37,7 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from . import utils
-from labelme.ai import RUN_MODES
-from labelme.ai import _utils  ## added by alvin
+
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -823,7 +823,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox = QtWidgets.QComboBox()
         selectAiModel.defaultWidget().layout().addWidget(self._selectAiModelComboBox)
 
-        model_names = [model.name for model in MODELS]
+        model_names = [model.name for model in MODEL_DEFAULT]
         self._selectAiModelComboBox.addItems(model_names)
         if self._config["ai"]["default"] in model_names:
             model_index = model_names.index(self._config["ai"]["default"])
@@ -846,7 +846,7 @@ class MainWindow(QtWidgets.QMainWindow):
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
         selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
         ## added by Alvin
-        selectRunModeLabel = QtWidgets.QLabel(self.tr("Run Mode"))
+        selectRunModeLabel = QtWidgets.QLabel(self.tr("Selected Inference Device Switch"))
         selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
         selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-import sys
 import os
+import sys
 
 import imgviz
 import matplotlib.pyplot as plt

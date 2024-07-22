@@ -31,8 +31,13 @@ class EfficientSam:
         providers = _utils.set_providers(provider)
         self._encoder_session = ort.InferenceSession(self._encoder_path,providers=providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path,providers=providers)
+        
+        self.set_runMode(providers)
         logger.info("Mode is modified")
-
+        
+    def set_runMode(self,device):## added by Alvin
+        self._run_mode = 0  if device == 'CUDAExecutionProvider' else 1
+        
     def get_runMode(self) :## added by Alvin
         return self._run_mode
     

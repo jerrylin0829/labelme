@@ -19,7 +19,7 @@ from qtpy.QtCore import Qt
 
 from labelme import PY2
 from labelme import __appname__
-from labelme.ai import MODELS
+from labelme.ai import MODEL_DEFAULT
 from labelme.config import get_config
 from labelme.label_file import LabelFile
 from labelme.label_file import LabelFileError
@@ -823,7 +823,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox = QtWidgets.QComboBox()
         selectAiModel.defaultWidget().layout().addWidget(self._selectAiModelComboBox)
 
-        model_names = [model.name for model in MODELS]
+        model_names = [model.name for model in MODEL_DEFAULT]
         self._selectAiModelComboBox.addItems(model_names)
         if self._config["ai"]["default"] in model_names:
             model_index = model_names.index(self._config["ai"]["default"])

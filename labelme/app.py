@@ -846,7 +846,7 @@ class MainWindow(QtWidgets.QMainWindow):
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
         selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
         ## added by Alvin
-        selectRunModeLabel = QtWidgets.QLabel(self.tr("Run Mode"))
+        selectRunModeLabel = QtWidgets.QLabel(self.tr("Selected Inference Device Switch"))
         selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
         selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
 

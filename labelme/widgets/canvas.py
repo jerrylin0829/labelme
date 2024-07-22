@@ -50,7 +50,7 @@ class Canvas(QtWidgets.QWidget):
             raise ValueError(
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
-        self.num_backups = kwargs.pop("num_backups", 100)
+        self.num_backups = kwargs.pop("num_backups", 30)
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -170,8 +170,8 @@ class Canvas(QtWidgets.QWidget):
         shapesBackup = []
         for shape in self.shapes:
             shapesBackup.append(shape.copy())
-        if len(self.shapesBackups) > self.num_backups:
-            self.shapesBackups = self.shapesBackups[-self.num_backups - 1 :]
+        # if len(self.shapesBackups) > self.num_backups:
+        #     self.shapesBackups = self.shapesBackups[-self.num_backups - 1 :]
         self.shapesBackups.append(shapesBackup)
 
     @property
@@ -917,7 +917,7 @@ class Canvas(QtWidgets.QWidget):
             contours = find_contours(mask, 0.5)
             for contour in contours:
                 if len(contour) >= 3:  # Valid polygon should have at least 3 points
-                    POLYGON_APPROX_TOLERANCE = 0.004  # Increase to reduce points
+                    POLYGON_APPROX_TOLERANCE = 0.04  # Increase to reduce points
                     polygon = approximate_polygon(
                         coords=contour,
                         tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,

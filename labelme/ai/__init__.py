@@ -91,6 +91,10 @@ MODELS = [
     EfficientSamVitT,
     EfficientSamVitS,
 ]
+MODEL_DEFAULT = [ ## added by Alvin
+    EfficientSamVitS
+]
+
 RUN_MODES = [ ## added by Alvin
     "CUDA",
     "CPU"

@@ -1,9 +1,10 @@
 import imgviz
 import numpy as np
+import onnxruntime as ort
 import skimage
 
-import onnxruntime as ort
 from labelme.logger import logger
+
 
 def get_available_providers(): ## added by Alvin
     try:

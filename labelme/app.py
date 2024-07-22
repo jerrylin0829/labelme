@@ -16,10 +16,11 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt
 
-
 from labelme import PY2
 from labelme import __appname__
 from labelme.ai import MODEL_DEFAULT
+from labelme.ai import RUN_MODES
+from labelme.ai import _utils  ## added by alvin
 from labelme.config import get_config
 from labelme.label_file import LabelFile
 from labelme.label_file import LabelFileError
@@ -36,8 +37,7 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from . import utils
-from labelme.ai import RUN_MODES
-from labelme.ai import _utils  ## added by alvin
+
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 

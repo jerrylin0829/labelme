@@ -83,8 +83,6 @@ class EfficientSamVitS(EfficientSam):
             ),
         )
 
-
-
 MODELS = [
     SegmentAnythingModelVitB,
     SegmentAnythingModelVitL,

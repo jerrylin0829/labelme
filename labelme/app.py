@@ -8,7 +8,6 @@ import os.path as osp
 import re
 import webbrowser
  
- 
 import imgviz
 import natsort
 import numpy as np

@@ -7,6 +7,8 @@ import os
 import os.path as osp
 import re
 import webbrowser
+import torch
+
 
 import imgviz
 import natsort
@@ -111,6 +113,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
+
+        self.gpuAvailableList = []
 
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -855,7 +859,18 @@ class MainWindow(QtWidgets.QMainWindow):
         selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
         
         provider = _utils.get_available_providers()
-        mode_index = 0 if provider[0] == 'CUDAExecutionProvider' else 1
+        mode_index = 0 
+        
+        if provider[0] == 'CUDAExecutionProvider' :
+            try :
+                import torch
+                gpu_count = torch.cuda.device_count()
+                for cuda_idx in range(gpu_count):
+                    RUN_MODES.insert(0,f'CUDA {cuda_idx}')
+                logger.info(f"Number of available GPUs: {gpu_count}") 
+
+            except  ImportError as e :
+                logger.error(f"ImportError: {e}")
 
         self._selectRunModeComboBox.addItems(RUN_MODES[mode_index:])
         self._selectRunModeComboBox.setCurrentIndex(mode_index if provider[0] == 'CUDAExecutionProvider' else 0)

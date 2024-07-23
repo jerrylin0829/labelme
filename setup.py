@@ -17,7 +17,7 @@ def get_version():
         raise RuntimeError("{} doesn't contain __version__".format(filename))
     version = match.groups()[0]
     return version
-    
+
 def get_install_requires():
     install_requires = [
         "gdown",
@@ -52,7 +52,7 @@ def get_install_requires():
 
     if os.name == "nt":  # Windows
         install_requires.append("colorama")
-    #added by alvin
+    
     # Check if CUDA is available
     try:
         subprocess.run(['nvcc', '--version'], check=True, 
@@ -62,7 +62,15 @@ def get_install_requires():
         cuda_installed = False
 
     install_requires.append("onnxruntime-gpu" if cuda_installed else "onnxruntime")
+
     return install_requires
+    
+def install_torch_packages():
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install",
+        "torch", "torchvision", "torchaudio",
+        "--index-url", "https://download.pytorch.org/whl/cu118"
+    ])
     
 def get_long_description():
     with open("README.md",'r', encoding='utf8') as f:
@@ -150,6 +158,9 @@ def main():
             ],
         },
     )
+
+    # Install torch packages with specific index URL
+    install_torch_packages()
 
 
 if __name__ == "__main__":

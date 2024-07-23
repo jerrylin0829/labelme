@@ -859,8 +859,7 @@ class MainWindow(QtWidgets.QMainWindow):
         provider = _utils.get_available_providers()
 
         mode_index = 0 
-                
-        if provider[0] == 'CUDAExecutionProvider' : # added by Alvin
+        if provider[0] != 'CUDAExecutionProvider' : # added by Alvin
             try :
                 import torch
 

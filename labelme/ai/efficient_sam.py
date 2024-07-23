@@ -37,8 +37,9 @@ class EfficientSam:
         logger.info("Mode is modified")
     
     def set_runMode(self,device):## added by Alvin
-        self._run_mode = 0  if device == 'CUDAExecutionProvider' else 1
-        
+        self._run_mode = 0  if len(device) > 1 else 1
+        logger.info(f" run_mode {self._run_mode}")
+
     def get_runMode(self) :## added by Alvin
         return self._run_mode
     

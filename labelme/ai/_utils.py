@@ -8,19 +8,16 @@ from labelme.logger import logger
 
 def get_available_providers(cuda_num=0): ## added by Alvin
     try:
-        if cuda_num != 0 :
+        check_list = ort.get_available_providers()
+
+        if 'CUDAExecutionProvider' in check_list:
+            logger.info(f"CUDA {cuda_num} is available and will be used.")
             providers = [
                 ('CUDAExecutionProvider', {
                     'device_id': cuda_num,
                 })]
             return providers
-        else:
-            providers = ort.get_available_providers()
-
-        logger.info(f"Available providers: {providers}")
-        if 'CUDAExecutionProvider' in providers:
-            logger.info(f"CUDA {cuda_num} is available and will be used.")
-            return ['CUDAExecutionProvider']
+        
     except Exception as e:
         logger.warning(f"Error checking GPU availability: {e}")
     logger.info("CUDAExecutionProvider is not available, using CPUExecutionProvider.")

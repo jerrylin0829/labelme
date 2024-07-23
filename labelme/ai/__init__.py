@@ -96,6 +96,5 @@ MODEL_DEFAULT = [ ## added by Alvin
 ]
 
 RUN_MODES = [ ## added by Alvin
-    "CUDA",
     "CPU"
 ]

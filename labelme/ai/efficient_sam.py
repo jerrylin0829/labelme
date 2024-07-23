@@ -21,7 +21,6 @@ class EfficientSam:
         self._encoder_session = ort.InferenceSession(self._encoder_path, providers=providers) ## added by Alvin
         self._decoder_session = ort.InferenceSession(self._decoder_path, providers=providers) ## added by Alvin
 
-        self._run_mode = 0 if providers[0] == 'CUDAExecutionProvider' else 1
         self._lock = threading.Lock()
         self._image_embedding_cache = collections.OrderedDict()
 
@@ -32,17 +31,9 @@ class EfficientSam:
         providers = _utils.set_providers(provider)
         self._encoder_session = ort.InferenceSession(self._encoder_path,providers=providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path,providers=providers)
-        
-        self.set_runMode(providers)
+    
         logger.info("Mode is modified")
-    
-    def set_runMode(self,device):## added by Alvin
-        self._run_mode = 0  if len(device) > 1 else 1
-        logger.info(f" run_mode {self._run_mode}")
 
-    def get_runMode(self) :## added by Alvin
-        return self._run_mode
-    
     def set_image(self, image: np.ndarray):
         with self._lock:
             self._image = image

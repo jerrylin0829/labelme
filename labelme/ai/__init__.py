@@ -95,6 +95,9 @@ MODEL_DEFAULT = [ ## added by Alvin
     EfficientSamVitS
 ]
 
+'''
+@RUN_MODES will be appended cuda dev if env have cuda
+'''
 RUN_MODES = [ ## added by Alvin
     "CPU"
 ]

@@ -17,7 +17,6 @@ class EfficientSam:
 
         self._encoder_path = encoder_path ## added by Alvin
         self._decoder_path = decoder_path ## added by Alvin
-        self._cuda_runNum = None
 
         self._encoder_session = ort.InferenceSession(self._encoder_path, providers=providers) ## added by Alvin
         self._decoder_session = ort.InferenceSession(self._decoder_path, providers=providers) ## added by Alvin
@@ -29,18 +28,14 @@ class EfficientSam:
         self._thread = None
 
     def set_providers(self,provider): ## added by Alvin
-        
+
         providers = _utils.set_providers(provider)
         self._encoder_session = ort.InferenceSession(self._encoder_path,providers=providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path,providers=providers)
         
         self.set_runMode(providers)
         logger.info("Mode is modified")
-    def set_cudaNum(self,num):
-        self._cuda_runNum = num
-
-    def get_cudaNum(self):
-        return self._cuda_runNum
+    
     def set_runMode(self,device):## added by Alvin
         self._run_mode = 0  if device == 'CUDAExecutionProvider' else 1
         

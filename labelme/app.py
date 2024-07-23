@@ -859,9 +859,10 @@ class MainWindow(QtWidgets.QMainWindow):
         selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
         
         provider = _utils.get_available_providers()
+
         mode_index = 0 
-        
-        if provider[0] == 'CUDAExecutionProvider' :
+                
+        if provider[0] == 'CUDAExecutionProvider' : # added by Alvin
             try :
                 import torch
                 gpu_count = torch.cuda.device_count()
@@ -874,6 +875,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._selectRunModeComboBox.addItems(RUN_MODES[mode_index:])
         self._selectRunModeComboBox.setCurrentIndex(mode_index if provider[0] == 'CUDAExecutionProvider' else 0)
+        
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
         self._selectRunModeComboBox.currentIndexChanged.connect(

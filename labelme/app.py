@@ -865,12 +865,14 @@ class MainWindow(QtWidgets.QMainWindow):
         if provider[0] == 'CUDAExecutionProvider' : # added by Alvin
             try :
                 import torch
+                
                 gpu_count = torch.cuda.device_count()
                 for cuda_idx in range(gpu_count):
                     RUN_MODES.insert(0,f'CUDA {cuda_idx}')
                 logger.info(f"Number of available GPUs: {gpu_count}") 
 
             except  ImportError as e :
+                RUN_MODES.insert(mode_index,"CUDA 0") ## CUDA is detected,but failed to import torch -> set CUDA 0 to default
                 logger.error(f"ImportError: {e}")
 
         self._selectRunModeComboBox.addItems(RUN_MODES[mode_index:])

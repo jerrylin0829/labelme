@@ -65,7 +65,7 @@ def get_install_requires():
 
     return install_requires
     
-def install_torch_packages():
+def install_torch_packages():  ## added by Alvin
     subprocess.check_call([
         sys.executable, "-m", "pip", "install",
         "torch", "torchvision", "torchaudio",
@@ -160,7 +160,7 @@ def main():
     )
 
     # Install torch packages with specific index URL
-    install_torch_packages()
+    install_torch_packages() ## added by Alvin
 
 
 if __name__ == "__main__":

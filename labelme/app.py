@@ -7,7 +7,7 @@ import os
 import os.path as osp
 import re
 import webbrowser
-import torch
+import torch ## added by Alvin
 
 
 import imgviz
@@ -113,8 +113,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
-
-        self.gpuAvailableList = []
 
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -865,7 +863,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if provider[0] == 'CUDAExecutionProvider' : # added by Alvin
             try :
                 import torch
-                
+
                 gpu_count = torch.cuda.device_count()
                 for cuda_idx in range(gpu_count):
                     RUN_MODES.insert(0,f'CUDA {cuda_idx}')

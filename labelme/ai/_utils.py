@@ -6,32 +6,38 @@ import skimage
 from labelme.logger import logger
 
 
-def get_available_providers(): ## added by Alvin
+def get_available_providers(cuda_num=0): ## added by Alvin
     try:
-        providers = ort.get_available_providers()
+        if cuda_num != 0 :
+            providers = [
+                ('CUDAExecutionProvider', {
+                    'device_id': cuda_num,
+                })]
+            return providers
+        else:
+            providers = ort.get_available_providers()
+
         logger.info(f"Available providers: {providers}")
         if 'CUDAExecutionProvider' in providers:
-            logger.info("CUDAExecutionProvider is available and will be used.")
+            logger.info(f"CUDA {cuda_num} is available and will be used.")
             return ['CUDAExecutionProvider']
     except Exception as e:
         logger.warning(f"Error checking GPU availability: {e}")
     logger.info("CUDAExecutionProvider is not available, using CPUExecutionProvider.")
+    
     return ['CPUExecutionProvider']
-
 
 def set_providers(mode): ## added by Alvin
-    if mode == "CUDA":
-        return get_available_providers()
-    elif mode == "CPU":
+    if mode[:4] == "CUDA":
+        return get_available_providers(int(mode[5:]))
+    elif mode[:3] == "CPU":
         logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
     return ['CPUExecutionProvider']
-
   
 def _get_contour_length(contour):
     contour_start = contour
     contour_end = np.r_[contour[1:], contour[0:1]]
     return np.linalg.norm(contour_end - contour_start, axis=1).sum()
-
 
 def compute_polygon_from_mask(mask):
     contours = skimage.measure.find_contours(np.pad(mask, pad_width=1))

@@ -99,5 +99,4 @@ MODEL_DEFAULT = [ ## added by Alvin
 @RUN_MODES will be appended cuda dev if env have cuda
 '''
 RUN_MODES = [ ## added by Alvin
-    "CPU"
 ]

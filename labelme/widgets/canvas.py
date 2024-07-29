@@ -143,6 +143,7 @@ class Canvas(QtWidgets.QWidget):
         self._createMode = value
 
     def initializeAiModel(self, name ):
+        logger.info("initializeAiModel")
         if name not in [model.name for model in labelme.ai.MODELS]:
             raise ValueError("Unsupported ai model: %s" % name)
         model = [model for model in labelme.ai.MODELS if model.name == name][0]
@@ -160,6 +161,10 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.set_image(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+
+    def getAiInferenceOption(self):
+        return self._ai_model.getAiInferenceOption()
+    
     def changeAiRunMode(self,mode): ## added by Alvin
         self._ai_model.set_providers(mode)
 

@@ -38,6 +38,7 @@ from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
+from PyQt5.QtWidgets import QMessageBox
 from . import utils
 
 # FIXME
@@ -209,7 +210,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.shape_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
-
+    
         # Actions
         action = functools.partial(utils.newAction, self)
         shortcuts = self._config["shortcuts"]
@@ -855,34 +856,34 @@ class MainWindow(QtWidgets.QMainWindow):
         ## added by Alvin
         self._selectRunModeComboBox = QtWidgets.QComboBox()
         selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
-        
-        provider = _utils.get_available_providers()
 
         mode_index = 0 
-        if provider[0] != 'CUDAExecutionProvider' : # added by Alvin
+        provider = _utils.get_available_providers()
+        inference_option = _utils.getAiInferenceOption()
+        logger.info(provider)
+
+        if 'CPUExecutionProvider' in  inference_option :
+            RUN_MODES.append("CPU")
+        
+        if 'CUDAExecutionProvider' in inference_option: # added by Alvin
             try :
                 import torch
 
                 gpu_count = torch.cuda.device_count()
                 for cuda_idx in range(gpu_count):
-                    RUN_MODES.insert(0,f'CUDA {cuda_idx}')
+                    RUN_MODES.append(torch.cuda.get_device_name(cuda_idx))
                 logger.info(f"Number of available GPUs: {gpu_count}") 
 
             except  ImportError as e :
-                RUN_MODES.insert(mode_index,"CUDA 0") ## CUDA is detected,but failed to import torch -> set CUDA 0 to default
                 logger.error(f"ImportError: {e}")
 
-        self._selectRunModeComboBox.addItems(RUN_MODES[mode_index:])
-        self._selectRunModeComboBox.setCurrentIndex(mode_index if provider[0] == 'CUDAExecutionProvider' else 0)
+        self._selectRunModeComboBox.addItems(RUN_MODES)
+        self._selectRunModeComboBox.setCurrentIndex(mode_index)
         
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
-        self._selectRunModeComboBox.currentIndexChanged.connect(
-            lambda: self.canvas.changeAiRunMode(
-                self._selectRunModeComboBox.currentText()
-            )                                    
-            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
-            else None
+        self._selectRunModeComboBox.currentIndexChanged.connect(        
+            self.on_combobox_changed
         )
         
         self.tools = self.toolbar("Tools")
@@ -973,6 +974,19 @@ class MainWindow(QtWidgets.QMainWindow):
         # if self.firstStart:
         #    QWhatsThis.enterWhatsThisMode()
 
+    def show_message_box(self, title, message): ## added by Alvin
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.exec_()
+
+    def on_combobox_changed(self, index): ## added by Alvin
+        if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
+            self.canvas.changeAiRunMode(index)
+            self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
+        else:
+            self.show_message_box("Info", "Change Selected Inference Device only in ai_polygon, ai_mask, or ai_boundingbox modes.")
+  
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)
         if actions:
@@ -2256,3 +2270,4 @@ class MainWindow(QtWidgets.QMainWindow):
                     images.append(relativePath)
         images = natsort.os_sorted(images)
         return images
+    

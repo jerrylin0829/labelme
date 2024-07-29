@@ -875,6 +875,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 logger.info(f"Number of available GPUs: {gpu_count}") 
 
             except  ImportError as e :
+                self.show_message_box("ImportError", f"{e}")
                 logger.error(f"ImportError: {e}")
 
         self._selectRunModeComboBox.addItems(RUN_MODES)

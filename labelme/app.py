@@ -871,7 +871,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 gpu_count = torch.cuda.device_count()
                 for cuda_idx in range(gpu_count):
-                    RUN_MODES.append(torch.cuda.get_device_name(cuda_idx))
+                    RUN_MODES.append(f'GPU {cuda_idx} : {torch.cuda.get_device_name(cuda_idx)}')
                 logger.info(f"Number of available GPUs: {gpu_count}") 
 
             except  ImportError as e :

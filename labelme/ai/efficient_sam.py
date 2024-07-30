@@ -33,9 +33,6 @@ class EfficientSam:
         self._decoder_session = ort.InferenceSession(self._decoder_path,providers=self._providers)
         logger.info("Mode is modified")
         
-    def getAiInferenceOption(self):  ## added by Alvin
-        return self._inference_option
-    
     def set_image(self, image: np.ndarray):
         with self._lock:
             self._image = image

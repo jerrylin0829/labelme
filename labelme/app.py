@@ -597,6 +597,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Adjust brightness and contrast"),
             enabled=False,
         )
+        toggleSAMeverything = action(
+            self.tr("&SAM everything"),
+            self.toggleSAMeverything,
+            None,
+            "sam-everything",
+            self.tr("Automatic mask generator with SAM model"), 
+            enabled=False,
+        )
         # Group zoom controls into a list for easier toggling.
         zoomActions = (
             self.zoomWidget,
@@ -682,6 +690,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWindow=fitWindow,
             fitWidth=fitWidth,
             brightnessContrast=brightnessContrast,
+            toggleSAMeverything=toggleSAMeverything,
             zoomActions=zoomActions,
             openNextImg=openNextImg,
             openPrevImg=openPrevImg,
@@ -739,9 +748,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # Add this action to the menu
                 createAiBoundingBoxMode,
-
                 editMode,
                 brightnessContrast,
+                toggleSAMeverything,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
         )
@@ -800,6 +809,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 fitWidth,
                 None,
                 brightnessContrast,
+                toggleSAMeverything,
             ),
         )
 
@@ -902,6 +912,7 @@ class MainWindow(QtWidgets.QMainWindow):
             delete,
             undo,
             brightnessContrast,
+            toggleSAMeverything,
             None,
             fitWindow,
             zoom,
@@ -1674,7 +1685,10 @@ class MainWindow(QtWidgets.QMainWindow):
         brightness = dialog.slider_brightness.value()
         contrast = dialog.slider_contrast.value()
         self.brightnessContrast_values[self.filename] = (brightness, contrast)
-
+        
+    def toggleSAMeverything(self,img):
+        return
+        
     def togglePolygons(self, value):
         flag = value
         for item in self.labelList:

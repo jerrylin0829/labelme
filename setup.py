@@ -49,7 +49,7 @@ def get_install_requires():
     if QT_BINDING is None:
         install_requires.append("PyQt5!=5.15.3,!=5.15.4")
 
-    if os.name == "nt":
+    if os.name == "nt": # windows
         install_requires.append("colorama")
 
     # Use the correct CUDA version to determine which onnxruntime package to install

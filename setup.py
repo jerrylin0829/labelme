@@ -8,7 +8,11 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-from install_labelme import install_requires
+# Run CUDA detection once during import
+from install_labelme import detect_cuda_version
+
+cuda_version = detect_cuda_version()  # Set this once to avoid recursion
+
 def get_version():
     filename = "labelme/__init__.py"
     with open(filename) as f:
@@ -19,10 +23,19 @@ def get_version():
     return version
 
 def get_install_requires():
+    install_requires = [
+        "gdown",
+        "imgviz>=1.7.5",
+        "matplotlib",
+        "natsort>=7.1.0",
+        "numpy<2.0.0",
+        "Pillow>=2.8",
+        "PyYAML",
+        "qtpy!=1.11.2",
+        "scikit-image",
+        "termcolor",
+    ]
 
-    # Find python binding for qt with priority:
-    # PyQt5 -> PySide2
-    # and PyQt5 is automatically installed on Python3.
     QT_BINDING = None
 
     for binding in ["PyQt5", "PySide2"]:
@@ -34,58 +47,51 @@ def get_install_requires():
             continue
 
     if QT_BINDING is None:
-        # PyQt5 can be installed via pip for Python3
-        # 5.15.3, 5.15.4 won't work with PyInstaller
         install_requires.append("PyQt5!=5.15.3,!=5.15.4")
 
-    if os.name == "nt":  # Windows
+    if os.name == "nt":
         install_requires.append("colorama")
-    
 
-def get_cuda_version():
-    """
-    Retrieve the CUDA version from a file.
-    """
-    try:
-        with open('cuda_version.txt', 'r') as f:
-            cuda_version = f.read().strip()
-        if not re.match(r'^\d{2,3}$', cuda_version):
-            raise ValueError(
-                "Invalid CUDA version format. Please ensure the file contains a number like '118' or '102'."
-            )
-        return cuda_version
-    except FileNotFoundError:
-        raise RuntimeError(
-            "cuda_version.txt file not found. Please ensure the file exists and contains the CUDA version number."
-        )
+    # Use the correct CUDA version to determine which onnxruntime package to install
+    print(f"CUDA version detected in setup: {cuda_version}")
+    install_requires.append("onnxruntime-gpu" if cuda_version is not None else "onnxruntime")
 
-def install_torch_packages(cuda_version):
-    # Use the specified CUDA version in the PyTorch URL
-    url = f"https://download.pytorch.org/whl/cu{cuda_version}"
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install",
-        "torch", "torchvision", "torchaudio",
-        "--index-url", url
-    ])
+    return install_requires
+
+def install_torch_packages():
+    print(f"Detected CUDA version: {cuda_version}")
+
+    if cuda_version is not None:
+        url = f"https://download.pytorch.org/whl/cu{cuda_version.replace('.', '')}"
+        try:
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install",
+                "torch", "torchvision", "torchaudio",
+                "--index-url", url
+            ])
+            print("Successfully installed PyTorch with CUDA support.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to install PyTorch with CUDA: {e}")
+            print("PyTorch installation skipped.")
+    else:
+        print("CUDA not detected or specified, skipping PyTorch installation.")
 
 def get_long_description():
     with open("README.md",'r', encoding='utf8') as f:
         long_description = f.read()
     try:
-        # when this package is being released
         import github2pypi
 
         return github2pypi.replace_url(
             slug="wkentaro/labelme", content=long_description, branch="main"
         )
     except ImportError:
-        # when this package is being installed
         return long_description
 
 def main():
     version = get_version()
 
-    if sys.argv[1] == "release":
+    if len(sys.argv) > 1 and sys.argv[1] == "release":
         try:
             import github2pypi  # NOQA
         except ImportError:
@@ -154,14 +160,11 @@ def main():
         },
     )
 
-    # Read the CUDA version and install the appropriate PyTorch packages
     try:
-        cuda_version = get_cuda_version()
-        install_torch_packages(cuda_version)
+        install_torch_packages()
     except RuntimeError as e:
         print(e)
-        print("Proceeding with CPU-only installation.")
-        # Optionally handle CPU-only package installations here
+        print("An error occurred while trying to install PyTorch.")
 
 if __name__ == "__main__":
     main()

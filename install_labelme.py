@@ -6,8 +6,8 @@ import argparse
 
 cuda_version = None  # Ensure cuda_version is a module-level global variable
 
-def detect_cuda_version():
-    cuda_base_path = "/usr/local"
+def detect_cuda_version(cuda_dir=None):
+    cuda_base_path = "/usr/local" if cuda_dir is None else cuda_dir
     cuda_versions = []
 
     for entry in os.listdir(cuda_base_path):
@@ -32,8 +32,8 @@ def detect_cuda_version():
     print(f"Using CUDA version {latest_version} from {latest_entry}")
     return latest_version
 
-def validate_cuda_version(cuda_ver):
-    detected_version = detect_cuda_version()
+def validate_cuda_version(cuda_ver,cuda_dir=None):
+    detected_version = detect_cuda_version(cuda_dir)
     specified_version = cuda_ver if cuda_ver else None
 
     if specified_version and detected_version:
@@ -46,13 +46,13 @@ def validate_cuda_version(cuda_ver):
 
     return detected_version
 
-def main(cuda_ver=None):
-    global cuda_version  # Ensure we are modifying the global variable
+def main(cuda_ver=None,cuda_dir=None):
+    global cuda_version  
 
     if cuda_ver:
-        cuda_version = validate_cuda_version(cuda_ver)
+        cuda_version = validate_cuda_version(cuda_ver,cuda_dir)
     else:
-        cuda_version = detect_cuda_version()
+        cuda_version = detect_cuda_version(cuda_dir)
     
     print(f"Final CUDA version used for installation: {cuda_version}")
 
@@ -68,6 +68,7 @@ def main(cuda_ver=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Install labelme with CUDA support.")
     parser.add_argument("--cuda_ver", type=str, help="Specify the CUDA version (e.g., 11.8)")
+    parser.add_argument("--cuda_dir", type=str, help="Specify the cuda installation folder")
     args = parser.parse_args()
 
-    main(args.cuda_ver)
+    main(args.cuda_ver,args.cuda_dir)

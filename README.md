@@ -173,13 +173,13 @@ labelme data_annotated/ --labels labels.txt  # specify label list with a file
 ## How to develop
 
 ```bash
-git clone https://github.com/wkentaro/labelme.git
+git clone https://github.com/jerrylin0829/labelme.git
 cd labelme
 
 # Install anaconda3 and labelme
 curl -L https://github.com/wkentaro/dotfiles/raw/main/local/bin/install_anaconda3.sh | bash -s .
 source .anaconda3/bin/activate
-pip install -e .
+python install_labelme.py
 ```
 
 

@@ -179,7 +179,9 @@ cd labelme
 # Install anaconda3 and labelme
 curl -L https://github.com/wkentaro/dotfiles/raw/main/local/bin/install_anaconda3.sh | bash -s .
 source .anaconda3/bin/activate
-python install_labelme.py
+python install_labelme.py 
+or if you have GPU & cuda ->
+python install_labelme.py --cuda_ver=11.8
 ```
 
 

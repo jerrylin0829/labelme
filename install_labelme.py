@@ -1,59 +1,170 @@
+import distutils.spawn
 import os
 import re
+import shlex
 import subprocess
 import sys
 
-install_requires = [
-    "gdown",
-    "imgviz>=1.7.5",
-    "matplotlib",
-    "natsort>=7.1.0",
-    "numpy<2.0.0",
-    "Pillow>=2.8",
-    "PyYAML",
-    "qtpy!=1.11.2",
-    "scikit-image",
-    "termcolor",
-]
+from setuptools import find_packages
+from setuptools import setup
 
-def prompt_for_gpu():
-    """Ask the user if they have a GPU."""
-    while True:
-        response = input("Does your system have a GPU? (y/n): ").strip().lower()
-        if response in ('y', 'n'):
-            install_requires.append("onnxruntime-gpu" if response == 'y' else "onnxruntime")
-            print(f"install_requires :{install_requires}")
-            return response == 'y'
-        print("Please enter 'y' or 'n'.")
+# Run CUDA detection once during import
+from install_labelme import detect_cuda_version
 
-def prompt_for_cuda_version():
-    """Ask the user for their CUDA version and validate the input format."""
-    while True:
-        cuda_version = input("Please enter your CUDA version (e.g., 11.8 should be entered as 118): ").strip()
-        if re.match(r'^\d{2,3}$', cuda_version):
-            return cuda_version
-        print("Invalid format, please enter a number like '124' or '118'.")
+cuda_version = detect_cuda_version()  # Set this once to avoid recursion
+
+def get_version():
+    filename = "labelme/__init__.py"
+    with open(filename) as f:
+        match = re.search(r"""^__version__ = ['"]([^'"]*)['"]""", f.read(), re.M)
+    if not match:
+        raise RuntimeError("{} doesn't contain __version__".format(filename))
+    version = match.groups()[0]
+    return version
+
+def get_install_requires():
+    install_requires = [
+        "gdown",
+        "imgviz>=1.7.5",
+        "matplotlib",
+        "natsort>=7.1.0",
+        "numpy<2.0.0",
+        "Pillow>=2.8",
+        "PyYAML",
+        "qtpy!=1.11.2",
+        "scikit-image",
+        "termcolor",
+    ]
+
+    QT_BINDING = None
+
+    for binding in ["PyQt5", "PySide2"]:
+        try:
+            __import__(binding)
+            QT_BINDING = binding.lower()
+            break
+        except ImportError:
+            continue
+
+    if QT_BINDING is None:
+        install_requires.append("PyQt5!=5.15.3,!=5.15.4")
+
+    if os.name == "nt":
+        install_requires.append("colorama")
+
+    # Use the correct CUDA version to determine which onnxruntime package to install
+    print(f"CUDA version detected in setup: {cuda_version}")
+    install_requires.append("onnxruntime-gpu" if cuda_version is not None else "onnxruntime")
+
+    return install_requires
+
+def install_torch_packages():
+    print(f"Detected CUDA version: {cuda_version}")
+
+    if cuda_version is not None:
+        url = f"https://download.pytorch.org/whl/cu{cuda_version.replace('.', '')}"
+        try:
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install",
+                "torch", "torchvision", "torchaudio",
+                "--index-url", url
+            ])
+            print("Successfully installed PyTorch with CUDA support.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to install PyTorch with CUDA: {e}")
+            print("PyTorch installation skipped.")
+    else:
+        print("CUDA not detected or specified, skipping PyTorch installation.")
+
+def get_long_description():
+    with open("README.md",'r', encoding='utf8') as f:
+        long_description = f.read()
+    try:
+        import github2pypi
+
+        return github2pypi.replace_url(
+            slug="wkentaro/labelme", content=long_description, branch="main"
+        )
+    except ImportError:
+        return long_description
 
 def main():
-    # Determine if the user has a GPU
-    has_gpu = prompt_for_gpu()
+    version = get_version()
 
-    if has_gpu:
-        # If the user has a GPU, ask for the CUDA version
-        cuda_version = prompt_for_cuda_version()
-        # Write the CUDA version to a file
-        with open('cuda_version.txt', 'w') as f:
-            f.write(cuda_version)
+    if len(sys.argv) > 1 and sys.argv[1] == "release":
+        try:
+            import github2pypi  # NOQA
+        except ImportError:
+            print(
+                "Please install github2pypi\n\n\tpip install github2pypi\n",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
-    # Execute pip install -e .
+        if not distutils.spawn.find_executable("twine"):
+            print(
+                "Please install twine:\n\n\tpip install twine\n",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        commands = [
+            "git push origin main",
+            "git tag v{:s}".format(version),
+            "git push origin --tags",
+            "python setup.py sdist",
+            "twine upload dist/labelme-{:s}.tar.gz".format(version),
+        ]
+        for cmd in commands:
+            print("+ {:s}".format(cmd))
+            subprocess.check_call(shlex.split(cmd))
+        sys.exit(0)
+
+    setup(
+        name="labelme",
+        version=version,
+        packages=find_packages(),
+        description="Image Polygonal Annotation with Python",
+        long_description=get_long_description(),
+        long_description_content_type="text/markdown",
+        author="Kentaro Wada",
+        author_email="www.kentaro.wada@gmail.com",
+        url="https://github.com/wkentaro/labelme",
+        install_requires=get_install_requires(),
+        license="GPLv3",
+        keywords="Image Annotation, Machine Learning",
+        classifiers=[
+            "Development Status :: 5 - Production/Stable",
+            "Intended Audience :: Developers",
+            "Intended Audience :: Science/Research",
+            "Natural Language :: English",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python",
+            "Programming Language :: Python :: 3.5",
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3 :: Only",
+        ],
+        package_data={"labelme": ["icons/*", "config/*.yaml", "translate/*"]},
+        entry_points={
+            "console_scripts": [
+                "labelme=labelme.__main__:main",
+                "labelme_draw_json=labelme.cli.draw_json:main",
+                "labelme_draw_label_png=labelme.cli.draw_label_png:main",
+                "labelme_json_to_dataset=labelme.cli.json_to_dataset:main",
+                "labelme_export_json=labelme.cli.export_json:main",
+                "labelme_on_docker=labelme.cli.on_docker:main",
+            ],
+        },
+    )
+
     try:
-        print("Installing the package, please wait...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
-        print("Installation completed.")
-    except subprocess.CalledProcessError as e:
-        print(f"Installation failed: {e}")
-        sys.exit(1)
+        install_torch_packages()
+    except RuntimeError as e:
+        print(e)
+        print("An error occurred while trying to install PyTorch.")
 
 if __name__ == "__main__":
     main()
-

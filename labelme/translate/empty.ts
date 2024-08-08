@@ -258,6 +258,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../app.py" line="399"/>
+        <source>Create AI-BoundingBox</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="399"/>
+        <source>Start drawing ai_boundingbox. Ctrl+LeftClick ends creation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+
+    <message>
         <location filename="../app.py" line="393"/>
         <source>Edit Polygons</source>
         <translation type="unfinished"></translation>

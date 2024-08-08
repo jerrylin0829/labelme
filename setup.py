@@ -69,7 +69,7 @@ def install_torch_packages():  ## added by Alvin
     subprocess.check_call([
         sys.executable, "-m", "pip", "install",
         "torch", "torchvision", "torchaudio",
-        "--index-url", "https://download.pytorch.org/whl/cu118"
+        "--index-url", "https://download.pytorch.org/whl/cu124"
     ])
     
 def get_long_description():

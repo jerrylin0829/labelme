@@ -258,6 +258,16 @@
         <translation>开始绘制AI蒙版。Ctrl+单击左键结束绘制。</translation>
     </message>
     <message>
+        <location filename="../app.py" line="399"/>
+        <source>Create AI-BoundingBox</source>
+        <translation>创建AI矩形</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="399"/>
+        <source>Start drawing ai_boundingbox. Ctrl+LeftClick ends creation.</source>
+        <translation>开始绘制AI矩形。Ctrl+单击左键结束绘制。</translation>
+    </message>
+    <message>
         <location filename="../app.py" line="393"/>
         <source>Edit Polygons</source>
         <translation>编辑多边形</translation>

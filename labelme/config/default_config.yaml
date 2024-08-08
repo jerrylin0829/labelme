@@ -74,7 +74,7 @@ canvas:
   # show crosshair
   crosshair:
     polygon: false
-    rectangle: true
+    rectangle: false
     circle: false
     line: false
     point: false

@@ -173,15 +173,18 @@ labelme data_annotated/ --labels labels.txt  # specify label list with a file
 ## How to develop
 
 ```bash
-git clone https://github.com/wkentaro/labelme.git
+git clone https://github.com/jerrylin0829/labelme.git
 cd labelme
 
-# Install anaconda3 and labelme
+# Install anaconda3 
 curl -L https://github.com/wkentaro/dotfiles/raw/main/local/bin/install_anaconda3.sh | bash -s .
 source .anaconda3/bin/activate
-pip install -e .
-```
+#Install labelme & set CUDA option
+python install_labelme.py --cuda_ver=12.4 --cuda_dir=/path/to/cuda
 
+```
+`--cuda_ver`: (Optional) Specify the CUDA version you want to use, e.g., ``--cuda_ver=12.4.`` If omitted, the script will attempt to detect the installed CUDA version automatically.
+`--cuda_dir`: (Optional) Specify the custom directory where CUDA is installed, e.g., `--cuda_dir=/usr/local/cuda-12`. If omitted, the script will use the default /usr/local path to find CUDA installations.
 
 ### How to build standalone executable
 

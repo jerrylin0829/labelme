@@ -84,7 +84,7 @@ class EfficientSamVitS(EfficientSam):
         )
 
 
-MODELS = [
+MODELS = [ ## former model appended list
     SegmentAnythingModelVitB,
     SegmentAnythingModelVitL,
     SegmentAnythingModelVitH,

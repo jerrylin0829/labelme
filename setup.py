@@ -8,6 +8,10 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
+# Run CUDA detection once during import
+from install_labelme import detect_cuda_version
+
+cuda_version = detect_cuda_version()  # Set this once to avoid recursion
 
 def get_version():
     filename = "labelme/__init__.py"
@@ -32,9 +36,6 @@ def get_install_requires():
         "termcolor",
     ]
 
-    # Find python binding for qt with priority:
-    # PyQt5 -> PySide2
-    # and PyQt5 is automatically installed on Python3.
     QT_BINDING = None
 
     for binding in ["PyQt5", "PySide2"]:
@@ -46,51 +47,51 @@ def get_install_requires():
             continue
 
     if QT_BINDING is None:
-        # PyQt5 can be installed via pip for Python3
-        # 5.15.3, 5.15.4 won't work with PyInstaller
         install_requires.append("PyQt5!=5.15.3,!=5.15.4")
 
-    if os.name == "nt":  # Windows
+    if os.name == "nt": # windows
         install_requires.append("colorama")
-    
-    # Check if CUDA is available
-    try:
-        subprocess.run(['nvcc', '--version'], check=True, 
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        cuda_installed = True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        cuda_installed = False
 
-    install_requires.append("onnxruntime-gpu" if cuda_installed else "onnxruntime")
+    # Use the correct CUDA version to determine which onnxruntime package to install
+    print(f"CUDA version detected in setup: {cuda_version}")
+    install_requires.append("onnxruntime-gpu" if cuda_version is not None else "onnxruntime")
 
     return install_requires
-    
-def install_torch_packages():  ## added by Alvin
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install",
-        "torch", "torchvision", "torchaudio",
-        "--index-url", "https://download.pytorch.org/whl/cu124"
-    ])
-    
+
+def install_torch_packages():
+    print(f"Detected CUDA version: {cuda_version}")
+
+    if cuda_version is not None:
+        url = f"https://download.pytorch.org/whl/cu{cuda_version.replace('.', '')}"
+        try:
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install",
+                "torch", "torchvision", "torchaudio",
+                "--index-url", url
+            ])
+            print("Successfully installed PyTorch with CUDA support.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to install PyTorch with CUDA: {e}")
+            print("PyTorch installation skipped.")
+    else:
+        print("CUDA not detected or specified, skipping PyTorch installation.")
+
 def get_long_description():
     with open("README.md",'r', encoding='utf8') as f:
         long_description = f.read()
     try:
-        # when this package is being released
         import github2pypi
 
         return github2pypi.replace_url(
             slug="wkentaro/labelme", content=long_description, branch="main"
         )
     except ImportError:
-        # when this package is being installed
         return long_description
-
 
 def main():
     version = get_version()
 
-    if sys.argv[1] == "release":
+    if len(sys.argv) > 1 and sys.argv[1] == "release":
         try:
             import github2pypi  # NOQA
         except ImportError:
@@ -159,9 +160,11 @@ def main():
         },
     )
 
-    # Install torch packages with specific index URL
-    install_torch_packages() ## added by Alvin
-
+    try:
+        install_torch_packages()
+    except RuntimeError as e:
+        print(e)
+        print("An error occurred while trying to install PyTorch.")
 
 if __name__ == "__main__":
     main()

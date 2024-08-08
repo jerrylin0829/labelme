@@ -38,6 +38,7 @@ from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
+from PyQt5.QtCore import QVariant, Qt
 from PyQt5.QtWidgets import QMessageBox
 from . import utils
 
@@ -114,7 +115,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
-
+        self._isAiMode = False
+        
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
         self.flag_dock.setObjectName("Flags")
@@ -597,14 +599,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Adjust brightness and contrast"),
             enabled=False,
         )
-        toggleSAMeverything = action(
-            self.tr("&SAM everything"),
-            self.toggleSAMeverything,
-            None,
-            "sam-everything",
-            self.tr("Automatic mask generator with SAM model"), 
-            enabled=False,
-        )
         # Group zoom controls into a list for easier toggling.
         zoomActions = (
             self.zoomWidget,
@@ -622,7 +616,22 @@ class MainWindow(QtWidgets.QMainWindow):
             # Set to one to scale to 100% when loading files.
             self.MANUAL_ZOOM: lambda: 1,
         }
-
+        toggleSAMeverything = action(
+            self.tr("&SAM everything"),
+            self.toggleSAMeverything,
+            None,
+            "sam-everything",
+            self.tr("Automatic mask generator with SAM model"), 
+            enabled=False,
+        )
+        changeAImode = action (
+            self.tr("&Enable AI"),
+            self.changeAiMode,
+            None,
+            "AI-mode",
+            "To Enable/Disable All AI feature",
+            enabled=False,
+        )
         edit = action(
             self.tr("&Edit Label"),
             self._edit_label,
@@ -641,6 +650,7 @@ class MainWindow(QtWidgets.QMainWindow):
             checkable=True,
             enabled=True,
         )
+        
         if self._config["canvas"]["fill_drawing"]:
             fill_drawing.trigger()
 
@@ -691,6 +701,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWidth=fitWidth,
             brightnessContrast=brightnessContrast,
             toggleSAMeverything=toggleSAMeverything,
+            changeAImode= changeAImode,
             zoomActions=zoomActions,
             openNextImg=openNextImg,
             openPrevImg=openPrevImg,
@@ -751,6 +762,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 editMode,
                 brightnessContrast,
                 toggleSAMeverything,
+                changeAImode,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
         )
@@ -810,6 +822,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 None,
                 brightnessContrast,
                 toggleSAMeverything,
+                changeAImode,
             ),
         )
 
@@ -846,7 +859,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._config["ai"]["default"],
             )
             model_index = 0
-        self._selectAiModelComboBox.setCurrentIndex(model_index)
+        # for i in range(0,self._selectAiModelComboBox.count()) :
+        #     self._selectAiModelComboBox.setCurrentIndex(model_index)
+        
         self._selectAiModelComboBox.currentIndexChanged.connect(
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText(),
@@ -854,6 +869,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
+        
         ## added by Alvin
         selectRunMode = QtWidgets.QWidgetAction(self)
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
@@ -875,7 +891,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if 'CPUExecutionProvider' in  inference_option :
             RUN_MODES.append("CPU")
         
-        if 'CUDAExecutionProvider' in inference_option: # added by Alvin
+        if 'CUDAExecutionProvider'  in inference_option: # added by Alvin
             try :
                 import torch
 
@@ -891,10 +907,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectRunModeComboBox.addItems(RUN_MODES)
         self._selectRunModeComboBox.setCurrentIndex(mode_index)
         
+        # for i in range(0,self._selectRunModeComboBox.count()) :
+        #     self._selectRunModeComboBox.setItemData(i, QVariant(1 | 32), Qt.UserRole-1)
+            
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
         self._selectRunModeComboBox.currentIndexChanged.connect(        
-            self.on_combobox_changed
+            self.runMode_combobox_changed
         )
         
         self.tools = self.toolbar("Tools")
@@ -912,15 +931,15 @@ class MainWindow(QtWidgets.QMainWindow):
             delete,
             undo,
             brightnessContrast,
-            toggleSAMeverything,
             None,
             fitWindow,
             zoom,
             None,
+            changeAImode,
+            toggleSAMeverything,
             selectAiModel,
             selectRunMode
         )
-
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
         self.statusBar().show()
 
@@ -992,12 +1011,16 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.setText(message)
         msg_box.exec_()
 
-    def on_combobox_changed(self, index): ## added by Alvin
-        if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
+    def runMode_combobox_changed(self, index): ## added by Alvin 
+        if self._isAiMode or self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]  :
             self.canvas.changeAiRunMode(index)
             self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
         else:
-            self.show_message_box("Info", "Change Selected Inference Device only in ai_polygon, ai_mask, or ai_boundingbox modes.")
+            print("xxxxxxxxxxxx")
+            for i in range(0,self._selectRunModeComboBox.count()) :
+                self._selectRunModeComboBox.setItemData(i, QVariant(1 | 32), Qt.UserRole-1)
+                self._selectRunModeComboBox.setEnabled(False)
+
   
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)
@@ -1688,7 +1711,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def toggleSAMeverything(self,img):
         return
-        
+    
+    def changeAiMode(self):
+        self._isAiMode = not self._isAiMode
+
     def togglePolygons(self, value):
         flag = value
         for item in self.labelList:

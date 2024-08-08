@@ -183,8 +183,8 @@ source .anaconda3/bin/activate
 python install_labelme.py --cuda_ver=12.4 --cuda_dir=/path/to/cuda
 
 ```
-`--cuda_ver`: (Optional) Specify the CUDA version you want to use, e.g., ``--cuda_ver=12.4.`` If omitted, the script will attempt to detect the installed CUDA version automatically.
-`--cuda_dir`: (Optional) Specify the custom directory where CUDA is installed, e.g., `--cuda_dir=/usr/local/cuda-12`. If omitted, the script will use the default /usr/local path to find CUDA installations.
+- `--cuda_ver`: (Optional) Specify the CUDA version you want to use, e.g., ``--cuda_ver=12.4.`` If omitted, the script will attempt to detect the installed CUDA version automatically.
+- `--cuda_dir`: (Optional) Specify the custom directory where CUDA is installed, e.g., `--cuda_dir=/usr/local/cuda-12`. If omitted, the script will use the default /usr/local path to find CUDA installations.
 
 ### How to build standalone executable
 

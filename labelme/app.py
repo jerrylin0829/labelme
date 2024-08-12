@@ -418,6 +418,22 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode == "ai_boundingbox" 
             else None
         )
+        
+        createAiEverythingMode = action(
+            self.tr("Create AI-Everything"),
+            lambda: self.toggleDrawMode(False, createMode="ai_everything"),
+            None,
+            "objects",
+            self.tr("Start drawing ai_everything. Ctrl+LeftClick ends creation."),
+            enabled=False,
+        )
+        createAiEverythingMode.changed.connect(
+            lambda: self.canvas.initializeAiModel(
+                name=self._selectAiModelComboBox.currentText()
+            )
+            if self.canvas.createMode == "ai_everything" 
+            else None
+        )
 
         editMode = action(
             self.tr("Edit Polygons"),
@@ -691,7 +707,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Add this action to the menu
             createAiBoundingBoxMode=createAiBoundingBoxMode,
-            
+            createAiEverythingMode=createAiEverythingMode,
+
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -735,6 +752,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # Add this action to the menu
                 createAiBoundingBoxMode,
+                createAiEverythingMode,
 
                 editMode,
                 edit,
@@ -759,6 +777,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # Add this action to the menu
                 createAiBoundingBoxMode,
+                createAiEverythingMode,
+
                 editMode,
                 brightnessContrast,
                 toggleSAMeverything,
@@ -1061,6 +1081,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createAiPolygonMode,
             self.actions.createAiMaskMode,
             self.actions.createAiBoundingBoxMode,
+            self.actions.createAiEverythingMode,
             self.actions.editMode,
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)
@@ -1095,6 +1116,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.createAiPolygonMode.setEnabled(True)
         self.actions.createAiMaskMode.setEnabled(True)
         self.actions.createAiBoundingBoxMode.setEnabled(True)
+        self.actions.createAiEverythingMode.setEnabled(True)
         title = __appname__
         if self.filename is not None:
             title = "{} - {}".format(title, self.filename)
@@ -1173,6 +1195,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "ai_polygon": self.actions.createAiPolygonMode,
             "ai_mask": self.actions.createAiMaskMode,
             "ai_boundingbox": self.actions.createAiBoundingBoxMode,
+            "ai_everything": self.actions.createAiEverythingMode,
         }
         self.canvas.setEditing(edit)
         self.canvas.createMode = createMode

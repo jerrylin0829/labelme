@@ -82,6 +82,7 @@ canvas:
     ai_polygon: false
     ai_mask: false
     ai_boundingbox: false
+    ai_everything: false
 
 shortcuts:
   close: Ctrl+W

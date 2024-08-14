@@ -13,7 +13,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 from EfficientSAM.efficient_sam.build_efficient_sam import build_efficient_sam_vits
 
-GRID_SIZE = 28
+GRID_SIZE = 10
 
 from segment_anything.utils.amg import (
     batched_mask_to_box,
@@ -31,6 +31,11 @@ class EfficientSAM_Everything:
         self.grid_size = grid_size
         self.min_area = min_area
         self.nms_thresh = nms_thresh
+        self.img = None
+        
+    def setImg(self,img):
+        self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
         
     def setInferenceDev(self,num) :
          self.device = torch.device("cuda{num}" if torch.cuda.is_available() else "cpu")
@@ -98,12 +103,12 @@ class EfficientSAM_Everything:
         masks = torch.ge(masks, 0.0)
         return masks, iou_
 
-    def run_everything(self, img_path, bbox):
-        image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
+    def run_everything(self, bbox):
+        
+        # #image = cv2.imread(img)
+        # image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         x1, y1, x2, y2 = bbox
-        cropped_image = image[y1:y2, x1:x2]
+        cropped_image = self.img[y1:y2, x1:x2]
 
         img_tensor = ToTensor()(cropped_image).to(self.device)
         _, original_image_h, original_image_w = img_tensor.shape
@@ -133,7 +138,7 @@ class EfficientSAM_Everything:
 
         final_masks = []
         for mask in predicted_masks:
-            full_image_mask = np.zeros((image.shape[0], image.shape[1]), dtype=bool)
+            full_image_mask = np.zeros((self.img.shape[0], self.img.shape[1]), dtype=bool)
             full_image_mask[y1:y2, x1:x2] = mask
             final_masks.append(full_image_mask)
 

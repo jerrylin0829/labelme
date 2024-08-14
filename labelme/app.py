@@ -1075,24 +1075,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.canvas.createMode in ["ai_everything"] :
             logger.info("ai_everything")
             self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
-
-    def loadImg2everything(self):
-        items = self.fileListWidget.selectedItems()
-        if not items:
-            return
-        item = items[0]
-
-        if not self.mayContinue():
-            return
-
-        currIndex = self.imageList.index(str(item.text()))
-        if currIndex < len(self.imageList):
-            filename = self.imageList[currIndex]
-            logger.info(self.imageList[currIndex])
-            if filename:
-                self.loadFile(filename)
-                logger.info(f"loadFile {len(self.imageList)}")
-                self.canvas.setEverythingImg(self.imageData)
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))

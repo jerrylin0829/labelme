@@ -1442,6 +1442,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.update_status("loading complete")  
     # React to canvas signals.
     def shapeSelectionChanged(self, selected_shapes):
+        logger.info("test")
         self._noSelectionSlot = True
         for shape in self.canvas.selectedShapes:
             shape.selected = False

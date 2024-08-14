@@ -35,7 +35,7 @@ def get_install_requires():
         "scikit-image",
         "termcolor",
         "pynvml",
-        "opencv-python"
+        "opencv-python-headless"
         
     ]
 

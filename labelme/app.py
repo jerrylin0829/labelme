@@ -886,7 +886,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText(),
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox", "ai_everything"]
             else None
         )
         
@@ -1032,7 +1032,7 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.exec_()
 
     def runMode_combobox_changed(self, index): ## added by Alvin 
-        if self._isAiMode or self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]  :
+        if self._isAiMode or self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox", "ai_everything"]:
             self.canvas.changeAiRunMode(index)
             self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
         else:

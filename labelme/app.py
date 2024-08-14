@@ -118,6 +118,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
+        
         self._iseSAMMode = False
         
         self.flag_dock = self.flag_widget = None
@@ -892,7 +893,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
-        self._selectAiModelComboBox.setEnabled(False) #? Test
+        self._selectAiModelComboBox.setEnabled(False) 
         
         
         
@@ -1066,7 +1067,8 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             
     def toggleSAMeverything(self):#! added by Alvin 
-        self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
+        self.canvas.initializeAiEverything() 
+        
         logger.info(self.canvas.createMode)
         self._selectRunModeComboBox.setEnabled(True)
         
@@ -1074,6 +1076,23 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.info("ai_everything")
             self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
 
+    def loadImg2everything(self):
+        items = self.fileListWidget.selectedItems()
+        if not items:
+            return
+        item = items[0]
+
+        if not self.mayContinue():
+            return
+
+        currIndex = self.imageList.index(str(item.text()))
+        if currIndex < len(self.imageList):
+            filename = self.imageList[currIndex]
+            logger.info(self.imageList[currIndex])
+            if filename:
+                self.loadFile(filename)
+                logger.info(f"loadFile {len(self.imageList)}")
+                self.canvas.setEverythingImg(self.imageData)
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))
@@ -1405,7 +1424,7 @@ class MainWindow(QtWidgets.QMainWindow):
             load=False,
         )
 
-    def fileSelectionChanged(self):
+    def fileSelectionChanged(self): ## mock
         items = self.fileListWidget.selectedItems()
         if not items:
             return
@@ -1417,9 +1436,15 @@ class MainWindow(QtWidgets.QMainWindow):
         currIndex = self.imageList.index(str(item.text()))
         if currIndex < len(self.imageList):
             filename = self.imageList[currIndex]
+            logger.info(self.imageList[currIndex])
             if filename:
                 self.loadFile(filename)
-
+                logger.info(f"loadFile {type(self.imageData)}")
+                
+                if self.canvas.createMode == "ai_everything" :
+                    self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
+                    logger.warn("img load into everything.")
+                    
     # React to canvas signals.
     def shapeSelectionChanged(self, selected_shapes):
         self._noSelectionSlot = True
@@ -2302,6 +2327,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(self.fileListWidget.count()):
             item = self.fileListWidget.item(i)
             lst.append(item.text())
+        
         return lst
 
     def importDroppedImageFiles(self, imageFiles):
@@ -2376,5 +2402,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     relativePath = os.path.normpath(osp.join(root, file))
                     images.append(relativePath)
         images = natsort.os_sorted(images)
+        for i in images:
+            logger.warning(i)
+            
         return images
     

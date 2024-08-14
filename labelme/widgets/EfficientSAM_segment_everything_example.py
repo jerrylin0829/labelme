@@ -11,8 +11,8 @@ import os
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
-from EfficientSAM.efficient_sam.build_efficient_sam import build_efficient_sam_vits
 
+from ..EfficientSAM.efficient_sam.build_efficient_sam import build_efficient_sam_vits
 GRID_SIZE = 10
 
 from segment_anything.utils.amg import (
@@ -33,16 +33,17 @@ class EfficientSAM_Everything:
         self.nms_thresh = nms_thresh
         self.img = None
         
-    def setImg(self,img):
+    def setImg(self, img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-    def setInferenceDev(self,num) :
+    def setInferenceDev(self, num):
         self.device = torch.device(f"cuda:{num}" if torch.cuda.is_available() else "cpu")
+        self.model = self.model.to(self.device) 
          
-    def setGridSize(self,grid_size) :
+    def setGridSize(self, grid_size):
         self.grid_size = grid_size
         
-    def getGridSize(self) :
+    def getGridSize(self):
         return self.grid_size
     
     def process_small_region(self, rles):
@@ -56,26 +57,30 @@ class EfficientSAM_Everything:
             mask, changed = remove_small_regions(mask, self.min_area, mode="islands")
             unchanged = unchanged and not changed
 
-            new_masks.append(torch.as_tensor(mask).unsqueeze(0))
+            new_masks.append(torch.as_tensor(mask).unsqueeze(0).to(self.device))  
             scores.append(float(unchanged))
 
         masks = torch.cat(new_masks, dim=0)
         boxes = batched_mask_to_box(masks)
         keep_by_nms = batched_nms(
             boxes.float(),
-            torch.as_tensor(scores),
-            torch.zeros_like(boxes[:, 0]),
+            torch.as_tensor(scores).to(self.device),  
+            torch.zeros_like(boxes[:, 0]).to(self.device),  
             iou_threshold=self.nms_thresh,
         )
 
         for i_mask in keep_by_nms:
             if scores[i_mask] == 0.0:
-                mask_torch = masks[i_mask].unsqueeze(0)
+                mask_torch = masks[i_mask].unsqueeze(0).to(self.device)  
                 rles[i_mask] = mask_to_rle_pytorch(mask_torch)
         masks = [rle_to_mask(rles[i][0]) for i in keep_by_nms]
         return masks
 
     def get_predictions_given_embeddings_and_queries(self, img, points, point_labels):
+        img = img.to(self.device)
+        points = points.to(self.device)
+        point_labels = point_labels.to(self.device)
+
         predicted_masks, predicted_iou = self.model(
             img[None, ...], points, point_labels
         )
@@ -103,9 +108,6 @@ class EfficientSAM_Everything:
         return masks, iou_
 
     def run_everything(self, bbox):
-        
-        # #image = cv2.imread(img)
-        # image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         x1, y1, x2, y2 = bbox
         cropped_image = self.img[y1:y2, x1:x2]
 

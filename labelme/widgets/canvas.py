@@ -179,6 +179,10 @@ class Canvas(QtWidgets.QWidget):
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
+    def setEverythingImg(self,img):
+         self._ai_everything.setImg(
+            labelme.utils.img_qt_to_arr(img)
+        )       
     def runEverything(self,xy=None): #!added by alvin (要調整) 
         #### x1 y1 x2 y2
         masks = self._ai_everything.run_everything((200, 200, 600, 600)) # TODO: 寫死測試

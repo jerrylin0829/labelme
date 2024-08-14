@@ -57,6 +57,7 @@ class Canvas(QtWidgets.QWidget):
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
         self.num_backups = kwargs.pop("num_backups", 30)
+        print(f"kwargs = {kwargs}")
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -69,6 +70,7 @@ class Canvas(QtWidgets.QWidget):
                 "ai_polygon": False,
                 "ai_mask": False,
                 "ai_boundingbox": False,
+                "ai_everything": False,
             },
         )
         super(Canvas, self).__init__(*args, **kwargs)
@@ -138,6 +140,7 @@ class Canvas(QtWidgets.QWidget):
             "ai_polygon",
             "ai_mask",
             "ai_boundingbox",
+            "ai_everything",
         ]:
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
@@ -309,7 +312,7 @@ class Canvas(QtWidgets.QWidget):
                     self.current.point_labels[-1],
                     0 if is_shift_pressed else 1,
                 ]
-            elif self.createMode == "rectangle":
+            elif self.createMode in ["rectangle", "line", "ai_everything"]:
                 self.line.points = [self.current[0], pos]
                 self.line.point_labels = [1, 1]
                 self.line.close()
@@ -317,10 +320,6 @@ class Canvas(QtWidgets.QWidget):
                 self.line.points = [self.current[0], pos]
                 self.line.point_labels = [1, 1]
                 self.line.shape_type = "circle"
-            elif self.createMode == "line":
-                self.line.points = [self.current[0], pos]
-                self.line.point_labels = [1, 1]
-                self.line.close()
             elif self.createMode == "point":
                 self.line.points = [self.current[0]]
                 self.line.point_labels = [1]
@@ -449,7 +448,7 @@ class Canvas(QtWidgets.QWidget):
                         self.line[0] = self.current[-1]
                         if self.current.isClosed():
                             self.finalise()
-                    elif self.createMode in ["rectangle", "circle", "line"]:
+                    elif self.createMode in ["rectangle", "circle", "line", "ai_everything"]:
                         assert len(self.current.points) == 1
                         self.current.points = self.line.points
                         self.finalise()
@@ -717,6 +716,9 @@ class Canvas(QtWidgets.QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
+        print(f"self._createMode = {self._createMode}")
+        print(f"self._crosshair = {self._crosshair}")
+        
         p = self._painter
         p.begin(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -747,7 +749,6 @@ class Canvas(QtWidgets.QWidget):
                 int(self.prevMovePoint.x()),
                 self.height() - 1,
             )
-
         Shape.scale = self.scale
         for shape in self.shapes:
             if (shape.selected or not self._hideBackround) and self.isVisible(shape):
@@ -877,6 +878,7 @@ class Canvas(QtWidgets.QWidget):
 
                 bounding_box_shape.selected = True
                 bounding_box_shape.paint(p)
+
         p.end()
 
     def transformPos(self, point):
@@ -1175,7 +1177,7 @@ class Canvas(QtWidgets.QWidget):
         self.current.restoreShapeRaw()
         if self.createMode in ["polygon", "linestrip"]:
             self.line.points = [self.current[-1], self.current[0]]
-        elif self.createMode in ["rectangle", "line", "circle"]:
+        elif self.createMode in ["rectangle", "line", "circle", "everything"]:
             self.current.points = self.current.points[0:1]
         elif self.createMode == "point":
             self.current = None

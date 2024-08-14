@@ -34,6 +34,8 @@ def get_install_requires():
         "qtpy!=1.11.2",
         "scikit-image",
         "termcolor",
+        "pynvml",
+        "opencv-python"
     ]
 
     QT_BINDING = None

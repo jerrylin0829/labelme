@@ -179,11 +179,9 @@ class Canvas(QtWidgets.QWidget):
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
-    def runEverything(self,xy=None): #!added by alvin (要調整) xy -> x1 y1 x2 y2
+    def runEverything(self,xy=None): #!added by alvin (要調整) 
         #### x1 y1 x2 y2
-        # x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
-        # x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
-        masks = self._ai_everything.run_everything((200, 200, 600, 600))
+        masks = self._ai_everything.run_everything((200, 200, 600, 600)) # TODO: 寫死測試
         return masks
     
     def seteSAMEverythingDev(self,num): #!added by alvin
@@ -388,6 +386,7 @@ class Canvas(QtWidgets.QWidget):
         # - Highlight shapes
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
+        
         self.setToolTip(self.tr("Image"))
         for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
             # Look for a nearby vertex to highlight. If that fails,
@@ -1031,32 +1030,34 @@ class Canvas(QtWidgets.QWidget):
                 )
                 self.shapes.append(self.new_shape)
         #''' for eSAM everything '''
+        
         elif self.createMode == "ai_everything":
-                masks = self.runEverything()
-                x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
-                x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
-                for mask in masks:
-                    contours = find_contours(mask, 0.5)
-                    for contour in contours:
-                        if len(contour) >= 3:  
-                            POLYGON_APPROX_TOLERANCE = 0.04  
-                            polygon = approximate_polygon(
-                                coords=contour,
-                                tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
-                            )
-                            polygon = polygon[:-1]  
+            x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
+            x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
+            masks = self.runEverything() #! 目前內部是寫死的
+            
+            for mask in masks:
+                contours = find_contours(mask, 0.5)
+                for contour in contours:
+                    if len(contour) >= 3:  
+                        POLYGON_APPROX_TOLERANCE = 0.04  
+                        polygon = approximate_polygon(
+                            coords=contour,
+                            tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                        )
+                        polygon = polygon[:-1]  
 
-                            points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
+                        points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
 
-                            
-                            self.new_shape = self.current.copy()
-                            self.new_shape.setShapeRefined(
-                                shape_type="polygon",
-                                points=points,
-                                point_labels=[1] * len(points),
-                                mask=None  
-                            )
-                            self.shapes.append(self.new_shape)
+                        
+                        self.new_shape = self.current.copy()
+                        self.new_shape.setShapeRefined(
+                            shape_type="polygon",
+                            points=points,
+                            point_labels=[1] * len(points),
+                            mask=None  
+                        )
+                        self.shapes.append(self.new_shape)
         else:
             self.current.close()
             self.shapes.append(self.current)

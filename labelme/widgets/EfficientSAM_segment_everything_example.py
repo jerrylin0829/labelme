@@ -36,9 +36,7 @@ class EfficientSAM_Everything:
     def setImg(self,img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-        
     def setInferenceDev(self,num) :
- 
         self.device = torch.device(f"cuda:{num}" if torch.cuda.is_available() else "cpu")
          
     def setGridSize(self,grid_size) :

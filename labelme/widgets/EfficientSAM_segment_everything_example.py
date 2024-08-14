@@ -38,7 +38,8 @@ class EfficientSAM_Everything:
         
         
     def setInferenceDev(self,num) :
-         self.device = torch.device("cuda{num}" if torch.cuda.is_available() else "cpu")
+ 
+        self.device = torch.device(f"cuda:{num}" if torch.cuda.is_available() else "cpu")
          
     def setGridSize(self,grid_size) :
         self.grid_size = grid_size
@@ -162,55 +163,3 @@ class EfficientSAM_Everything:
 
         ax.imshow(img)
         plt.show()
-
-# def show_anns_ours(mask, ax):
-#     ax.set_autoscale_on(False)
-#     img = np.ones((mask[0].shape[0], mask[0].shape[1], 4))
-#     img[:, :, 3] = 0
-    
-#     # 初始化一個空白的合併遮罩 (combined_mask)
-#     combined_mask = np.zeros((mask[0].shape[0], mask[0].shape[1]), dtype=bool)
-    
-#     # 將所有的單一遮罩合併到 combined_mask
-#     for ann in mask:
-#         combined_mask |= ann
-    
-#     # 設定統一的顏色給所有的遮罩
-#     color_mask = np.concatenate([np.random.random(3), [0.5]])
-#     img[combined_mask] = color_mask
-    
-#     # 顯示合併後的遮罩
-#     ax.imshow(img)
-
-
-
-# efficient_sam_vits_model = build_efficient_sam_vits().to('cuda')
-# efficient_sam_vits_model.eval()
-
-# fig, ax = plt.subplots(1, 2, figsize=(30, 30))
-# image_path = r"C:\Users\xxx50\Desktop\advantech\labelme\labelme\widgets\img.jpg" #! path
-# image = np.array(Image.open(image_path))
-# ax[0].imshow(image)
-# ax[0].title.set_text("Original")
-# ax[0].axis('off')
-
-# ax[1].imshow(image)
-# model = build_efficient_sam_vits()  # Assumed to be defined elsewhere
-# efficient_sam = EfficientSAM_Everything(model)
-# bbox = (200, 200, 600, 600)
-# ax[1].title.set_text("EfficientSAM")
-# masks = efficient_sam.run_everything(image_path, (200, 200, 600, 600))
-# efficient_sam.show_anns(masks,ax[1])
-# ax[1].axis('off')
-
-# 調整box的座標就可以在矩形框內做everything segmentation
-# bbox = (200, 200, 600, 600)
-# start = time.time()
-# mask_efficient_sam_vits = run_everything_ours(image_path, efficient_sam_vits_model, bbox)
-# print(f"infertence time : {time.time() - start}")
-# show_anns_ours(mask_efficient_sam_vits, ax[1])
-# ax[1].title.set_text("EfficientSAM")
-# ax[1].axis('off')
-
-
-#plt.show()

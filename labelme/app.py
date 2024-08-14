@@ -118,7 +118,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
-        self._isAiMode = False
+        self._iseSAMMode = False
         
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -644,11 +644,11 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         changeAImode = action (
-            self.tr("&Enable AI"),
+            self.tr("&Enable Everything"),
             self.changeAiMode,
             None,
             "AI-mode",
-            "To Enable/Disable All AI feature",
+            "To Enable/Disable Everything",
             enabled=False,
         )
         edit = action(
@@ -1057,23 +1057,22 @@ class MainWindow(QtWidgets.QMainWindow):
          self._setEverythingGridInput.setValue(int(value))
          self.canvas.setEverythingGrid(int(value))
 
-    def inference_dev_change(self, index): ## added by Alvin 
-        if self._isAiMode or self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]  :
-            self.canvas.changeAiRunMode(index)#! Except eSAM Everything, for eSAM AI feat. 
-            self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
-        elif self._isAiMode :
-            ## todo : 暫時註解，設計好再拿掉(有需要再拿掉測試)
-            #self..seteSAMEverythingDev(index) #! for eSAM Everything
+    def inference_dev_change(self, index): ## added by Alvin
+        if self._iseSAMMode or self.canvas.createMode in ["ai_everything"]  :
+            self.canvas.seteSAMEverythingDev(int(index))#! for eSAM Everything 
             logger.info(f"seteSAMEverythingDev is switch to cuda: {index}")
-            self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}. in Everything mode")
+            self.show_message_box(
+                "Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}. in Everything mode"
+            )
             
     def toggleSAMeverything(self):#! added by Alvin 
         self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
         logger.info(self.canvas.createMode)
         self._selectRunModeComboBox.setEnabled(True)
+        
         if self.canvas.createMode in ["ai_everything"] :
             logger.info("ai_everything")
-        #     self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
+            self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
 
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
@@ -1081,12 +1080,13 @@ class MainWindow(QtWidgets.QMainWindow):
          
     def changeAiMode(self): #! added by Alvin
         logger.info(self.canvas.createMode)
+        self.toggleDrawMode(False, createMode="ai_everything")
         
-        self._isAiMode = not self._isAiMode
-        self._toggleSAMeverything.setEnabled(self._isAiMode)
-        self._selectRunModeComboBox.setEnabled(self._isAiMode)
-        self._selectAiModelComboBox.setEnabled(self._isAiMode)
-        self._setEverythingGridInput.setEnabled(self._isAiMode)
+        self._iseSAMMode = not self._iseSAMMode
+        self._toggleSAMeverything.setEnabled(self._iseSAMMode)
+        self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
+        self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
+        self._setEverythingGridInput.setEnabled(self._iseSAMMode)
                     
 
   

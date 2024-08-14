@@ -22,6 +22,7 @@ from ..ai._utils import compute_mask_mix_polygon
 ## for EfficientSAM_Everything
 from .EfficientSAM_segment_everything_example import EfficientSAM_Everything
 from ..EfficientSAM.efficient_sam.build_efficient_sam import build_efficient_sam_vits
+
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
 
@@ -60,7 +61,6 @@ class Canvas(QtWidgets.QWidget):
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
         self.num_backups = kwargs.pop("num_backups", 30)
-        print(f"kwargs = {kwargs}")
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -176,16 +176,15 @@ class Canvas(QtWidgets.QWidget):
             model = build_efficient_sam_vits()
             self._ai_everything = EfficientSAM_Everything(model)
         self._ai_everything.setImg(
-            image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+            labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
-    def runEverything(self):#!added by alvin (要調整)
+    def runEverything(self,xy=None): #!added by alvin (要調整) xy -> x1 y1 x2 y2
         #### x1 y1 x2 y2
-        x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
-        x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
-        
-        masks = self._ai_everything.run_everything((x1, y1, x2, y2))
-        #self._ai_everything.show_anns(masks) #! @Jerry 這塊可能要整合進 canvas 裡
+        # x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
+        # x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
+        masks = self._ai_everything.run_everything((200, 200, 600, 600))
+        return masks
     
     def seteSAMEverythingDev(self,num): #!added by alvin
         self._ai_everything.setInferenceDev(num)
@@ -748,8 +747,8 @@ class Canvas(QtWidgets.QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
-        print(f"self._createMode = {self._createMode}")
-        print(f"self._crosshair = {self._crosshair}")
+        # print(f"self._createMode = {self._createMode}")
+        # print(f"self._crosshair = {self._crosshair}")
         
         p = self._painter
         p.begin(self)
@@ -1031,7 +1030,33 @@ class Canvas(QtWidgets.QWidget):
                     mask=sub_mask
                 )
                 self.shapes.append(self.new_shape)
-            
+        #''' for eSAM everything '''
+        elif self.createMode == "ai_everything":
+                masks = self.runEverything()
+                x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
+                x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
+                for mask in masks:
+                    contours = find_contours(mask, 0.5)
+                    for contour in contours:
+                        if len(contour) >= 3:  
+                            POLYGON_APPROX_TOLERANCE = 0.04  
+                            polygon = approximate_polygon(
+                                coords=contour,
+                                tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                            )
+                            polygon = polygon[:-1]  
+
+                            points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
+
+                            
+                            self.new_shape = self.current.copy()
+                            self.new_shape.setShapeRefined(
+                                shape_type="polygon",
+                                points=points,
+                                point_labels=[1] * len(points),
+                                mask=None  
+                            )
+                            self.shapes.append(self.new_shape)
         else:
             self.current.close()
             self.shapes.append(self.current)

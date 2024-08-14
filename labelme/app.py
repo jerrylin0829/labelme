@@ -1063,7 +1063,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
         elif self._isAiMode :
             ## todo : 暫時註解，設計好再拿掉(有需要再拿掉測試)
-            #self.canvas.seteSAMEverythingDev(index) #! for eSAM Everything
+            #self..seteSAMEverythingDev(index) #! for eSAM Everything
             logger.info(f"seteSAMEverythingDev is switch to cuda: {index}")
             self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}. in Everything mode")
             

@@ -958,7 +958,18 @@ class MainWindow(QtWidgets.QMainWindow):
         setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
         self._setEverythingGridInput.setEnabled(False)
         
+        everythingStatus = QtWidgets.QWidgetAction(self)
+        everythingStatus.setDefaultWidget(QtWidgets.QWidget())
+        everythingStatus.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+       
+        
+        self.everythingStatus = QtWidgets.QLabel()
+        self.everythingStatus.setAlignment(QtCore.Qt.AlignCenter)
+        everythingStatus.defaultWidget().layout().addWidget(self.everythingStatus)
+
+        
         self.tools = self.toolbar("Tools")
+        #self.tools.addWidget(self.everythingStatus)
         self.actions.tool = (
             open_,
             opendir,
@@ -981,7 +992,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self._toggleSAMeverything,
             selectAiModel,
             selectRunMode,
-            setEverythingGrid
+            setEverythingGrid,
+            everythingStatus
         )
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
         self.statusBar().show()
@@ -1054,6 +1066,9 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.setText(message)
         msg_box.exec_()
         
+    def update_status(self, status_text):  ## added by Alvin
+        self.everythingStatus.setText(f"Status: {status_text}")   
+            
     def setEverythingGridInputVal(self,value):
          self._setEverythingGridInput.setValue(int(value))
          self.canvas.setEverythingGrid(int(value))
@@ -1421,12 +1436,10 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.info(self.imageList[currIndex])
             if filename:
                 self.loadFile(filename)
-                logger.info(f"loadFile {type(self.imageData)}")
-                
-                if self.canvas.createMode == "ai_everything" :
+                if self.canvas.createMode == "ai_everything" : #! added by alvin
+                    self.update_status("eSAM Everything: Img is loading...")
                     self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
-                    logger.warn("img load into everything.")
-                    
+                    self.update_status("loading complete")  
     # React to canvas signals.
     def shapeSelectionChanged(self, selected_shapes):
         self._noSelectionSlot = True

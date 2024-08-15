@@ -39,7 +39,9 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from PyQt5.QtCore import QVariant, Qt
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox,QLineEdit,QHBoxLayout
+from .ai.esam_everything import GRID_SIZE
+from PyQt5.QtGui import QIntValidator
 from . import utils
 
 # FIXME
@@ -101,7 +103,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._noSelectionSlot = False
 
         self._copied_shapes = None
-
+        
+        
         # Main widgets and related state.
         self.labelDialog = LabelDialog(
             parent=self,
@@ -115,7 +118,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
-        self._isAiMode = False
+        self._iseSAMMode = False
         
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -419,22 +422,6 @@ class MainWindow(QtWidgets.QMainWindow):
             else None
         )
         
-        createAiEverythingMode = action(
-            self.tr("Create AI-Everything"),
-            lambda: self.toggleDrawMode(False, createMode="ai_everything"),
-            None,
-            "objects",
-            self.tr("Start drawing ai_everything. Ctrl+LeftClick ends creation."),
-            enabled=False,
-        )
-        createAiEverythingMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
-            )
-            if self.canvas.createMode == "ai_everything" 
-            else None
-        )
-
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -632,7 +619,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Set to one to scale to 100% when loading files.
             self.MANUAL_ZOOM: lambda: 1,
         }
-        toggleSAMeverything = action(
+        self._toggleSAMeverything = action(
             self.tr("&SAM everything"),
             self.toggleSAMeverything,
             None,
@@ -641,11 +628,11 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         changeAImode = action (
-            self.tr("&Enable AI"),
+            self.tr("&Enable Everything"),
             self.changeAiMode,
             None,
             "AI-mode",
-            "To Enable/Disable All AI feature",
+            "To Enable/Disable Everything",
             enabled=False,
         )
         edit = action(
@@ -717,7 +704,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWindow=fitWindow,
             fitWidth=fitWidth,
             brightnessContrast=brightnessContrast,
-            toggleSAMeverything=toggleSAMeverything,
+            toggleSAMeverything=self._toggleSAMeverything,
             changeAImode= changeAImode,
             zoomActions=zoomActions,
             openNextImg=openNextImg,
@@ -781,7 +768,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 editMode,
                 brightnessContrast,
-                toggleSAMeverything,
                 changeAImode,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
@@ -841,7 +827,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 fitWidth,
                 None,
                 brightnessContrast,
-                toggleSAMeverything,
+                self._toggleSAMeverything,
                 changeAImode,
             ),
         )
@@ -858,6 +844,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
         )
 
+        ''' selectAiModel UI '''
         selectAiModel = QtWidgets.QWidgetAction(self)
         selectAiModel.setDefaultWidget(QtWidgets.QWidget())
         selectAiModel.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
@@ -886,10 +873,14 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText(),
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox", "ai_everything"]
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
+        self._selectAiModelComboBox.setEnabled(False) #? Test
         
+        
+        
+        ''' selectRunMode UI '''
         ## added by Alvin
         selectRunMode = QtWidgets.QWidgetAction(self)
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
@@ -925,16 +916,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 logger.error(f"ImportError: {e}")
 
         self._selectRunModeComboBox.addItems(RUN_MODES)
-        self._selectRunModeComboBox.setCurrentIndex(mode_index)
-        
-        # for i in range(0,self._selectRunModeComboBox.count()) :
-        #     self._selectRunModeComboBox.setItemData(i, QVariant(1 | 32), Qt.UserRole-1)
-            
+        self._selectRunModeComboBox.setCurrentIndex(mode_index)    
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
         self._selectRunModeComboBox.currentIndexChanged.connect(        
-            self.runMode_combobox_changed
+            self.inference_dev_change
         )
+        self._selectRunModeComboBox.setEnabled(False) 
+        
+        ''' setEverythingGrid UI''' # added by alvin
+        
+        setEverythingGrid = QtWidgets.QWidgetAction(self)
+        setEverythingGrid.setDefaultWidget(QtWidgets.QWidget())
+        setEverythingGrid.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+        
+        setEverythingGridLabel =  QtWidgets.QLabel(self.tr("Everything's Grid"))
+        setEverythingGridLabel.setAlignment(QtCore.Qt.AlignLeft)
+        setEverythingGrid.defaultWidget().layout().addWidget(setEverythingGridLabel)
+        
+        self._setEverythingGridInput =  QtWidgets.QSpinBox(self)
+        self._setEverythingGridInput.setRange(1, 32) # grid size : 1 ~ 1024  
+        self._setEverythingGridInput.setValue(GRID_SIZE) # Initial Display Value
+        self._setEverythingGridInput.textChanged.connect(self.setEverythingGridInputVal)
+        setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
+        self._setEverythingGridInput.setEnabled(False)
         
         self.tools = self.toolbar("Tools")
         self.actions.tool = (
@@ -956,9 +961,10 @@ class MainWindow(QtWidgets.QMainWindow):
             zoom,
             None,
             changeAImode,
-            toggleSAMeverything,
+            self._toggleSAMeverything,
             selectAiModel,
-            selectRunMode
+            selectRunMode,
+            setEverythingGrid
         )
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
         self.statusBar().show()
@@ -1030,16 +1036,42 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.setWindowTitle(title)
         msg_box.setText(message)
         msg_box.exec_()
+        
+    def setEverythingGridInputVal(self,value):
+         self._setEverythingGridInput.setValue(int(value))
+         self.canvas.setEverythingGrid(int(value))
 
-    def runMode_combobox_changed(self, index): ## added by Alvin 
-        if self._isAiMode or self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox", "ai_everything"]:
-            self.canvas.changeAiRunMode(index)
-            self.show_message_box("Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}.")
-        else:
-            print("xxxxxxxxxxxx")
-            for i in range(0,self._selectRunModeComboBox.count()) :
-                self._selectRunModeComboBox.setItemData(i, QVariant(1 | 32), Qt.UserRole-1)
-                self._selectRunModeComboBox.setEnabled(False)
+    def inference_dev_change(self, index): ## added by Alvin
+        if self._iseSAMMode or self.canvas.createMode in ["ai_everything"]  :
+            self.canvas.seteSAMEverythingDev(int(index))#! for eSAM Everything 
+            logger.info(f"seteSAMEverythingDev is switch to cuda: {index}")
+            self.show_message_box(
+                "Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}. in Everything mode"
+            )
+            
+    def toggleSAMeverything(self):#! added by Alvin 
+        self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
+        logger.info(self.canvas.createMode)
+        self._selectRunModeComboBox.setEnabled(True)
+        
+        if self.canvas.createMode in ["ai_everything"] :
+            logger.info("ai_everything")
+            self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
+
+        
+    def setEverythingGridInput(self,txt): #! added by Alvin 
+        self.canvas.setEverythingGrid(int(txt))
+         
+    def changeAiMode(self): #! added by Alvin
+        logger.info(self.canvas.createMode)
+        self.toggleDrawMode(False, createMode="ai_everything")
+        
+        self._iseSAMMode = not self._iseSAMMode
+        self._toggleSAMeverything.setEnabled(self._iseSAMMode)
+        self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
+        self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
+        self._setEverythingGridInput.setEnabled(self._iseSAMMode)
+                    
 
   
     def menu(self, title, actions=None):
@@ -1731,13 +1763,8 @@ class MainWindow(QtWidgets.QMainWindow):
         brightness = dialog.slider_brightness.value()
         contrast = dialog.slider_contrast.value()
         self.brightnessContrast_values[self.filename] = (brightness, contrast)
-        
-    def toggleSAMeverything(self,img):
-        return
-    
-    def changeAiMode(self):
-        self._isAiMode = not self._isAiMode
 
+    
     def togglePolygons(self, value):
         flag = value
         for item in self.labelList:

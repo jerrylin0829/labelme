@@ -170,20 +170,20 @@ class Canvas(QtWidgets.QWidget):
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
-
+    def setEverythingImg(self,img):
+         self._ai_everything.setImg(
+            labelme.utils.img_qt_to_arr(img)
+        )  
+         
     def initializeAiEverything(self): #!added by alvin
         logger.info("initializeAiEverything...")
         if  self._ai_everything == None:
             model = build_efficient_sam_vits()
             self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev)
-        self._ai_everything.setImg(
-            labelme.utils.img_qt_to_arr(self.pixmap.toImage())
-        )
+        self.setEverythingImg(self.pixmap.toImage())
+
         
-    def setEverythingImg(self,img):
-         self._ai_everything.setImg(
-            labelme.utils.img_qt_to_arr(img)
-        )       
+     
     def runEverything(self,bbox): #!added by alvin (要調整) 
         masks = self._ai_everything.run_everything(bbox)
         return masks
@@ -194,6 +194,9 @@ class Canvas(QtWidgets.QWidget):
     def setEverythingGrid(self,grid_size) : #!added by alvin
         self._ai_everything.setGridSize(grid_size)
         logger.info(f"success {grid_size}")
+
+    def getEverythingCudaNum(self):
+        return self._ai_everything.getInferenceDev()
         
     def getEverythingGrid(self): #!added by alvin
         return self._ai_everything.getGridSize()

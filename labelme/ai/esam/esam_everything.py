@@ -51,6 +51,9 @@ class EfficientSAM_Everything:
     def getGridSize(self):
         return self.grid_size
     
+    def getInferenceDev(self):
+        return self.device.index
+    
     def process_small_region(self, rles):
         new_masks = []
         scores = []

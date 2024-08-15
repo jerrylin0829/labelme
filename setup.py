@@ -34,6 +34,8 @@ def get_install_requires():
         "qtpy!=1.11.2",
         "scikit-image",
         "termcolor",
+        "pynvml",
+        "opencv-python-headless"
     ]
 
     QT_BINDING = None
@@ -58,6 +60,22 @@ def get_install_requires():
 
     return install_requires
 
+def install_package_from_git():
+    # URL of the git repository
+    git_repo_url = "https://github.com/facebookresearch/segment-anything.git"
+    
+    # Construct the pip install command
+    command = f"{sys.executable} -m pip install git+{git_repo_url}"
+    
+    try:
+        # Execute the command
+        subprocess.check_call(command, shell=True)
+        print("Package installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to install package from Git repository.")
+        print(e)
+        
+        
 def install_torch_packages():
     print(f"Detected CUDA version: {cuda_version}")
 
@@ -74,6 +92,10 @@ def install_torch_packages():
             print(f"Failed to install PyTorch with CUDA: {e}")
             print("PyTorch installation skipped.")
     else:
+        subprocess.check_call([
+                sys.executable, "-m", "pip", "install",
+                "torch", "torchvision", "torchaudio"
+            ])        
         print("CUDA not detected or specified, skipping PyTorch installation.")
 
 def get_long_description():
@@ -159,6 +181,12 @@ def main():
             ],
         },
     )
+    try:
+        install_package_from_git()
+    except RuntimeError as e:
+        print(e)
+        print("An error occurred while trying to install segment-anything.")
+       
 
     try:
         install_torch_packages()

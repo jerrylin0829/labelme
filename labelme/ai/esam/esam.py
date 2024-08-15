@@ -14,10 +14,10 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 import time
 import json
-from labelme.logger import logger 
-from EfficientSAM.efficient_sam.efficient_sam_decoder import MaskDecoder, PromptEncoder
-from EfficientSAM.efficient_sam.efficient_sam_encoder import ImageEncoderViT
-from EfficientSAM.efficient_sam.two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
+
+from .esam_decoder import MaskDecoder, PromptEncoder
+from .esam_encoder import ImageEncoderViT
+from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
 
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0

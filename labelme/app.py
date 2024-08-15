@@ -40,7 +40,7 @@ from labelme.widgets import ZoomWidget
 
 from PyQt5.QtCore import QVariant, Qt
 from PyQt5.QtWidgets import QMessageBox,QLineEdit,QHBoxLayout
-from .ai.esam_everything import GRID_SIZE
+from .ai.esam.esam_everything import GRID_SIZE
 from PyQt5.QtGui import QIntValidator
 from . import utils
 
@@ -708,7 +708,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Add this action to the menu
             createAiBoundingBoxMode=createAiBoundingBoxMode,
-            createAiEverythingMode=createAiEverythingMode,
+            # createAiEverythingMode=createAiEverythingMode,
 
             zoom=zoom,
             zoomIn=zoomIn,
@@ -753,7 +753,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # Add this action to the menu
                 createAiBoundingBoxMode,
-                createAiEverythingMode,
+                # createAiEverythingMode,
 
                 editMode,
                 edit,
@@ -778,7 +778,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # Add this action to the menu
                 createAiBoundingBoxMode,
-                createAiEverythingMode,
+                # createAiEverythingMode,
 
                 editMode,
                 brightnessContrast,
@@ -1138,7 +1138,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createAiPolygonMode,
             self.actions.createAiMaskMode,
             self.actions.createAiBoundingBoxMode,
-            self.actions.createAiEverythingMode,
+            # self.actions.createAiEverythingMode,
             self.actions.editMode,
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)
@@ -1173,7 +1173,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.createAiPolygonMode.setEnabled(True)
         self.actions.createAiMaskMode.setEnabled(True)
         self.actions.createAiBoundingBoxMode.setEnabled(True)
-        self.actions.createAiEverythingMode.setEnabled(True)
+        # self.actions.createAiEverythingMode.setEnabled(True)
         title = __appname__
         if self.filename is not None:
             title = "{} - {}".format(title, self.filename)
@@ -1252,7 +1252,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "ai_polygon": self.actions.createAiPolygonMode,
             "ai_mask": self.actions.createAiMaskMode,
             "ai_boundingbox": self.actions.createAiBoundingBoxMode,
-            "ai_everything": self.actions.createAiEverythingMode,
+            # "ai_everything": self.actions.createAiEverythingMode,
         }
         self.canvas.setEditing(edit)
         self.canvas.createMode = createMode

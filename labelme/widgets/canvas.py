@@ -20,7 +20,7 @@ from labelme.shape import Shape
 from ..ai._utils import compute_mask_mix_polygon
 
 ## for EfficientSAM_Everything
-from .esam_everything import EfficientSAM_Everything
+from ..ai.esam_everything import EfficientSAM_Everything
 from ..ai.build_esam import build_efficient_sam_vits
 
 # TODO(unknown):
@@ -179,6 +179,10 @@ class Canvas(QtWidgets.QWidget):
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
+    def setEverythingImg(self,img):
+         self._ai_everything.setImg(
+            labelme.utils.img_qt_to_arr(img)
+        )       
     def runEverything(self,bbox): #!added by alvin (要調整) 
         masks = self._ai_everything.run_everything(bbox)
         return masks

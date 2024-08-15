@@ -913,8 +913,8 @@ class MainWindow(QtWidgets.QMainWindow):
         inference_option = _utils.getAiInferenceOption()
         logger.info(provider)
 
-        if 'CPUExecutionProvider' in  inference_option :
-            RUN_MODES.append("CPU")
+        # if 'CPUExecutionProvider' in  inference_option :
+        #     RUN_MODES.append("CPU")
         
         if 'CUDAExecutionProvider'  in inference_option: # added by Alvin
             try :
@@ -1056,33 +1056,18 @@ class MainWindow(QtWidgets.QMainWindow):
          self.canvas.setEverythingGrid(int(value))
 
     def inference_dev_change(self, index):  #! added by Alvin
-        
         if self.canvas._ai_everything is None:
-            self.canvas._ai_everything_initDev = index
+            self.canvas._ai_everything_initDev = index          
             return
-        
-        if self._iseSAMMode or self.canvas.createMode == "ai_everything":
-            
-            device_index = int(index)
-            self.canvas.seteSAMEverythingDev(device_index) 
-            logger.info(f"seteSAMEverythingDev is switched to cuda: {device_index}")
-            
-
-            selected_device = self._selectRunModeComboBox.currentText()
-            self.show_message_box(
-                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
-            )
-
             
     def toggleSAMeverything(self):#! added by Alvin 
         self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
-        logger.info(self.canvas.createMode)
-        self._selectRunModeComboBox.setEnabled(True)
-        
-        if self.canvas.createMode in ["ai_everything"] :
-            logger.info("ai_everything")
-            #self.canvas.runEverything()  #! @Jerry 這塊可能要調整 
-
+        cuda_num = self.canvas.getEverythingCudaNum()
+        selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0)
+        self.show_message_box(
+                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
+        ) 
+        self._selectRunModeComboBox.setEnabled(False) 
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))

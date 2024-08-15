@@ -257,7 +257,7 @@ class EfficientSam(nn.Module):
         return (x - self.pixel_mean) / self.pixel_std
 
 
-def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads,dev, checkpoint=None):
+def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads, dev, checkpoint=None):
     img_size = 1024
     encoder_patch_size = 16
     encoder_depth = 12

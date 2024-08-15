@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 import time
 import json
-
+from labelme.logger import logger
 from .esam_decoder import MaskDecoder, PromptEncoder
 from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer

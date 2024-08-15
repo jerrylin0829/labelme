@@ -8,7 +8,7 @@ from .esam import build_efficient_sam
 
 def build_efficient_sam_vitt(dev=None):
     return build_efficient_sam(
-        dev,
+        dev=dev,
         encoder_patch_embed_dim=192,
         encoder_num_heads=3,
         checkpoint="labelme/ai/weights/efficient_sam_vits.pt",
@@ -17,7 +17,7 @@ def build_efficient_sam_vitt(dev=None):
 
 def build_efficient_sam_vits(dev=None):
     return build_efficient_sam(
-        dev,
+        dev=dev,
         encoder_patch_embed_dim=384,
         encoder_num_heads=6,
         checkpoint=r"labelme/ai/weights/efficient_sam_vits.pt"

@@ -121,6 +121,7 @@ class Canvas(QtWidgets.QWidget):
 
         self._ai_model = None
         self._ai_everything = None #! added by alvin - for eSAM everything 
+        self._ai_everything_initDev = None #! added by alvin - for eSAM everything init
         
     def fillDrawing(self):
         return self._fill_drawing
@@ -174,7 +175,7 @@ class Canvas(QtWidgets.QWidget):
         logger.info("initializeAiEverything...")
         if  self._ai_everything == None:
             model = build_efficient_sam_vits()
-            self._ai_everything = EfficientSAM_Everything(model)
+            self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev)
         self._ai_everything.setImg(
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )

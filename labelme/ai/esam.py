@@ -14,10 +14,10 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 import time
 import json
-
-from .efficient_sam_decoder import MaskDecoder, PromptEncoder
-from .efficient_sam_encoder import ImageEncoderViT
-from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
+from labelme.logger import logger 
+from EfficientSAM.efficient_sam.efficient_sam_decoder import MaskDecoder, PromptEncoder
+from EfficientSAM.efficient_sam.efficient_sam_encoder import ImageEncoderViT
+from EfficientSAM.efficient_sam.two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
 
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0
@@ -214,13 +214,9 @@ class EfficientSam(nn.Module):
         batch_size, num_queries, max_num_pts, _ = batched_points.shape
         image_embeddings = self.get_image_embeddings(batched_images)
         
-        start_time = time.time()
-        initial_memory_allocated = torch.cuda.memory_allocated("cuda:6")
-        initial_memory_reserved = torch.cuda.memory_reserved("cuda:6")
 
         all_masks = []
         all_ious = []
-
 
         for i in range(0, num_queries, max_queries_per_batch):
   
@@ -244,33 +240,7 @@ class EfficientSam(nn.Module):
         all_masks = torch.cat(all_masks, dim=1)  
         all_ious = torch.cat(all_ious, dim=1)
         
-        
-        end_time = time.time()
-
-        
-        time_taken = end_time - start_time
-
-        
-        final_memory_allocated = torch.cuda.memory_allocated("cuda:6")
-        final_memory_reserved = torch.cuda.memory_reserved("cuda:6")
-
-      
-        memory_used = (final_memory_allocated - initial_memory_allocated)/ 1024 ** 2
-        memory_reserved = final_memory_reserved - initial_memory_reserved/ 1024 ** 2
-
-       
-        gpu_utilization = torch.cuda.utilization("cuda:6")
-        
-        info = {
-            "time_taken": time_taken,
-            "memory_used": memory_used,
-            "memory_reserved": memory_reserved,
-            "gpu_utilization": gpu_utilization
-        }
-
-        with open("performance_info.json", "w") as f:
-            json.dump(info, f, indent=4)
-
+    
         return all_masks, all_ious
 
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:
@@ -287,7 +257,7 @@ class EfficientSam(nn.Module):
         return (x - self.pixel_mean) / self.pixel_std
 
 
-def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads, checkpoint=None):
+def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads,dev, checkpoint=None):
     img_size = 1024
     encoder_patch_size = 16
     encoder_depth = 12
@@ -356,10 +326,41 @@ def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads, checkpoint=N
         pixel_mean=[0.485, 0.456, 0.406],
         pixel_std=[0.229, 0.224, 0.225],
     )
-
-    if checkpoint is not None:
-        with open(checkpoint, "rb") as f:
-            state_dict = torch.load(f, map_location="cuda:6")
-        sam.load_state_dict(state_dict["model"])
+    try:
+        if checkpoint is not None:
+            with open(checkpoint, "rb") as f:
+                if torch.cuda.is_available():
+                    if dev is None:
+                        state_dict = torch.load(f, map_location="cuda")
+                    else:
+                        state_dict = torch.load(f, map_location=f"cuda:{dev}")
+                else:
+                    logger.warning("CUDA is not available. Loading model on CPU.")
+                    state_dict = torch.load(f, map_location="cpu")
+                
+            if "model" in state_dict:
+                sam.load_state_dict(state_dict["model"])
+            else:
+                raise KeyError("'model' key not found in the checkpoint file.")
+    
+    except FileNotFoundError:
+        logger.error(f"Checkpoint file not found: {checkpoint}")
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint}")
+    
+    except IOError as e:
+        logger.error(f"Error opening or reading the checkpoint file: {e}")
+        raise IOError(f"Error opening or reading the checkpoint file: {e}")
+    
+    except RuntimeError as e:
+        logger.error(f"Runtime error during model loading: {e}")
+        raise RuntimeError(f"Runtime error during model loading: {e}")
+    
+    except KeyError as e:
+        logger.error(f"Key error: {e}")
+        raise KeyError(f"Key error: {e}")
+    
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        raise Exception(f"An unexpected error occurred: {e}")
     return sam
 

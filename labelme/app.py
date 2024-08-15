@@ -421,7 +421,21 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode == "ai_boundingbox" 
             else None
         )
-        
+        createAiEverythingMode = action(
+            self.tr("Create AI-Everything"),
+            lambda: self.toggleDrawMode(False, createMode="ai_everything"),
+            None,
+            "objects",
+            self.tr("Start drawing ai_everything. Ctrl+LeftClick ends creation."),
+            enabled=False,
+        )
+        createAiEverythingMode.changed.connect(
+            lambda: self.canvas.initializeAiModel(
+                name=self._selectAiModelComboBox.currentText()
+            )
+            if self.canvas.createMode == "ai_everything" 
+            else None
+        )        
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -1041,13 +1055,24 @@ class MainWindow(QtWidgets.QMainWindow):
          self._setEverythingGridInput.setValue(int(value))
          self.canvas.setEverythingGrid(int(value))
 
-    def inference_dev_change(self, index): ## added by Alvin
-        if self._iseSAMMode or self.canvas.createMode in ["ai_everything"]  :
-            self.canvas.seteSAMEverythingDev(int(index))#! for eSAM Everything 
-            logger.info(f"seteSAMEverythingDev is switch to cuda: {index}")
+    def inference_dev_change(self, index):  #! added by Alvin
+        
+        if self.canvas._ai_everything is None:
+            self.canvas._ai_everything_initDev = index
+            return
+        
+        if self._iseSAMMode or self.canvas.createMode == "ai_everything":
+            
+            device_index = int(index)
+            self.canvas.seteSAMEverythingDev(device_index) 
+            logger.info(f"seteSAMEverythingDev is switched to cuda: {device_index}")
+            
+
+            selected_device = self._selectRunModeComboBox.currentText()
             self.show_message_box(
-                "Info", f"Selected Inference Device has been change to {self._selectRunModeComboBox.currentText()}. in Everything mode"
+                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
             )
+
             
     def toggleSAMeverything(self):#! added by Alvin 
         self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉

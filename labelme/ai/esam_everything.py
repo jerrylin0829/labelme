@@ -26,8 +26,12 @@ from segment_anything.utils.amg import (
 from torchvision.ops.boxes import batched_nms, box_area
 
 class EfficientSAM_Everything:
-    def __init__(self, model, grid_size=10, min_area=100, nms_thresh=0.7):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, model, dev, grid_size=10, min_area=100, nms_thresh=0.7):
+        if dev != None and torch.cuda.is_available() :
+            self.device = torch.device(f"cuda:{dev}")
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
         self.model = model.to(self.device)
         self.grid_size = grid_size
         self.min_area = min_area

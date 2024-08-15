@@ -19,6 +19,10 @@ from labelme.shape import Shape
 
 from ..ai._utils import compute_mask_mix_polygon
 
+## for EfficientSAM_Everything
+from .esam_everything import EfficientSAM_Everything
+from ..ai.build_esam import build_efficient_sam_vits
+
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
 
@@ -57,7 +61,6 @@ class Canvas(QtWidgets.QWidget):
                 "Unexpected value for double_click event: {}".format(self.double_click)
             )
         self.num_backups = kwargs.pop("num_backups", 30)
-        print(f"kwargs = {kwargs}")
         self._crosshair = kwargs.pop(
             "crosshair",
             {
@@ -117,7 +120,8 @@ class Canvas(QtWidgets.QWidget):
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
 
         self._ai_model = None
-
+        self._ai_everything = None #! added by alvin - for eSAM everything 
+        
     def fillDrawing(self):
         return self._fill_drawing
 
@@ -164,8 +168,32 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.set_image(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+        
 
-    def getAiInferenceOption(self):
+    def initializeAiEverything(self): #!added by alvin
+        logger.info("initializeAiEverything...")
+        if  self._ai_everything == None:
+            model = build_efficient_sam_vits()
+            self._ai_everything = EfficientSAM_Everything(model)
+        self._ai_everything.setImg(
+            labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+        )
+        
+    def runEverything(self,bbox): #!added by alvin (要調整) 
+        masks = self._ai_everything.run_everything(bbox)
+        return masks
+    
+    def seteSAMEverythingDev(self,num): #!added by alvin
+        self._ai_everything.setInferenceDev(num)
+        
+    def setEverythingGrid(self,grid_size) : #!added by alvin
+        self._ai_everything.setGridSize(grid_size)
+        logger.info(f"success {grid_size}")
+        
+    def getEverythingGrid(self): #!added by alvin
+        return self._ai_everything.getGridSize()
+    
+    def getAiInferenceOption(self): #!added by alvin
         return self._ai_model.getAiInferenceOption()
     
     def changeAiRunMode(self,mode): ## added by Alvin
@@ -357,6 +385,7 @@ class Canvas(QtWidgets.QWidget):
         # - Highlight shapes
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
+        
         self.setToolTip(self.tr("Image"))
         for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
             # Look for a nearby vertex to highlight. If that fails,
@@ -716,8 +745,8 @@ class Canvas(QtWidgets.QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
-        print(f"self._createMode = {self._createMode}")
-        print(f"self._crosshair = {self._crosshair}")
+        # print(f"self._createMode = {self._createMode}")
+        # print(f"self._crosshair = {self._crosshair}")
         
         p = self._painter
         p.begin(self)
@@ -999,7 +1028,36 @@ class Canvas(QtWidgets.QWidget):
                     mask=sub_mask
                 )
                 self.shapes.append(self.new_shape)
+        #''' for eSAM everything '''
+        
+        elif self.createMode == "ai_everything":
+            x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
+            x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
+            bbox = (x1, y1, x2, y2)
+            masks = self.runEverything(bbox) 
             
+            for mask in masks:
+                contours = find_contours(mask, 0.5)
+                for contour in contours:
+                    if len(contour) >= 3:  
+                        POLYGON_APPROX_TOLERANCE = 0.04  
+                        polygon = approximate_polygon(
+                            coords=contour,
+                            tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                        )
+                        polygon = polygon[:-1]  
+
+                        points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
+
+                        
+                        self.new_shape = self.current.copy()
+                        self.new_shape.setShapeRefined(
+                            shape_type="polygon",
+                            points=points,
+                            point_labels=[1] * len(points),
+                            mask=None  
+                        )
+                        self.shapes.append(self.new_shape)
         else:
             self.current.close()
             self.shapes.append(self.current)

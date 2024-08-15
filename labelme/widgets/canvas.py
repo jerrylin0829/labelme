@@ -20,8 +20,8 @@ from labelme.shape import Shape
 from ..ai._utils import compute_mask_mix_polygon
 
 ## for EfficientSAM_Everything
-from ..ai.esam_everything import EfficientSAM_Everything
-from ..ai.build_esam import build_efficient_sam_vits
+from ..ai.esam.esam_everything import EfficientSAM_Everything
+from ..ai.esam.build_esam import build_efficient_sam_vits
 
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.

@@ -40,7 +40,7 @@ from labelme.widgets import ZoomWidget
 
 from PyQt5.QtCore import QVariant, Qt
 from PyQt5.QtWidgets import QMessageBox,QLineEdit,QHBoxLayout
-from .ai.esam_everything import GRID_SIZE
+from .ai.esam.esam_everything import GRID_SIZE
 from PyQt5.QtGui import QIntValidator
 from . import utils
 

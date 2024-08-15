@@ -15,8 +15,8 @@ from torch import nn, Tensor
 import time
 import json
 
-from .efficient_sam_decoder import MaskDecoder, PromptEncoder
-from .efficient_sam_encoder import ImageEncoderViT
+from .esam_decoder import MaskDecoder, PromptEncoder
+from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
 
 class EfficientSam(nn.Module):

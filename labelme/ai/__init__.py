@@ -1,6 +1,6 @@
 import gdown
 
-from .efficient_sam import EfficientSam
+from .esam import EfficientSam
 from .segment_anything_model import SegmentAnythingModel
 
 

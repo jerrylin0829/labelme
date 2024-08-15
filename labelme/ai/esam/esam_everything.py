@@ -13,7 +13,7 @@ import os
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
-from ..EfficientSAM.efficient_sam.build_efficient_sam import build_efficient_sam_vits
+from .build_esam import build_efficient_sam_vits
 GRID_SIZE = 10
 
 from segment_anything.utils.amg import (

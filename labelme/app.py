@@ -1056,11 +1056,13 @@ class MainWindow(QtWidgets.QMainWindow):
          self.canvas.setEverythingGrid(int(value))
 
     def inference_dev_change(self, index):  #! added by Alvin
-        if self.canvas._ai_everything is None:
+        if self.canvas._ai_everything is None and  self.canvas.createMode in ['ai_everything']:
             self.canvas._ai_everything_initDev = index          
-            return
+        else:
+            self._selectRunModeComboBox.setEnabled(False)
             
     def toggleSAMeverything(self):#! added by Alvin 
+        self.toggleDrawMode(False, createMode="ai_everything")
         self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
         cuda_num = self.canvas.getEverythingCudaNum()
         selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0)
@@ -1074,11 +1076,10 @@ class MainWindow(QtWidgets.QMainWindow):
          
     def changeAiMode(self): #! added by Alvin
         logger.info(self.canvas.createMode)
-        self.toggleDrawMode(False, createMode="ai_everything")
         
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
-        self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
+        self._selectRunModeComboBox.setEnabled(self._iseSAMMode if self.canvas._ai_everything is None else False)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
                     
@@ -1908,6 +1909,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleActions(True)
         self.canvas.setFocus()
         self.status(str(self.tr("Loaded %s")) % osp.basename(str(filename)))
+        
+        if self.canvas.createMode == "ai_everything" :
+            self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
+            logger.warn("Img load into everything.")   
         return True
 
     def resizeEvent(self, event):

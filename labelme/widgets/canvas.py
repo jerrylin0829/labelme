@@ -194,16 +194,34 @@ class Canvas(QtWidgets.QWidget):
     def setEverythingGrid(self,grid_size) : #!added by alvin
         self._ai_everything.setGridSize(grid_size)
         logger.info(f"success {grid_size}")
+        
+    def setEverythingNMS(self,nms_thresh):#!added by alvin
+        self._ai_everything.setNMS(nms_thresh)
+          
+    def setEverythingMFA(self,min_filter_area):  #? MFA : Min Filter Area
+        self._ai_everything.setMinFilterArea(min_filter_area)
+    
+    def setEverythingIQR(self,iqr):#!added by alvin
+        self._ai_everything.setIQR(iqr)   
 
-    def getEverythingCudaNum(self):
+    def getEverythingCudaNum(self):#!added by alvin
         return self._ai_everything.getInferenceDev()
         
     def getEverythingGrid(self): #!added by alvin
         return self._ai_everything.getGridSize()
     
-    def getAiInferenceOption(self): #!added by alvin
-        return self._ai_model.getAiInferenceOption()
+    # def getAiInferenceOption(self): #!added by alvin
+    #     return self._ai_model.getAiInferenceOption()
     
+    def getEverythingNMS(self): #!added by alvin
+        return self._ai_everything.getNMS()
+          
+    def getEverythingMFA(self):  #? MFA : Min Filter Area
+        return self._ai_everything.getMinFilterArea()
+    
+    def getEverythingIQR(self):#!added by alvin
+        return self._ai_everything.getIQR()      
+        
     def changeAiRunMode(self,mode): ## added by Alvin
         self._ai_model.set_providers(mode)
 

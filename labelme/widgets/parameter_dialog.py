@@ -19,8 +19,9 @@ class ParameterDialog(QDialog):
        
         self.param2 = QSpinBox(self)
         self.param2.setRange(0, 400)
-
         self.param1.setButtonSymbols(QAbstractSpinBox.NoButtons)
+
+        self.param2.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
         layout.addRow('NMS thresh:', self.param1)
         layout.addRow('Min Filter Area:', self.param2)
@@ -41,6 +42,5 @@ class ParameterDialog(QDialog):
 
     def load_parameters(self):
         nms_thresh, min_filter_area = self.getParameters()
-        print(nms_thresh, min_filter_area)
         self.param1.setValue(nms_thresh)
-        self.param2.setValue(min_filter_area)
+        self.param2.setValue(min_filter_area if min_filter_area is not None else 0)

@@ -1074,10 +1074,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def toggleSAMeverything(self):#! added by Alvin 
         self.toggleDrawMode(False, createMode="ai_everything")
         self.canvas.initializeAiEverything() 
+        self._everythingPtrBtn.setEnabled(self._iseSAMMode)
         cuda_num = self.canvas.getEverythingCudaNum()
         selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0)
         self.show_message_box(
-                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
+                "Inference device has been changed", f"Now using \n{selected_device}\n in Everything mode."
         ) 
         self._selectRunModeComboBox.setEnabled(False) 
         
@@ -1092,7 +1093,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectRunModeComboBox.setEnabled(self._iseSAMMode if self.canvas._ai_everything is None else False)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
-        self._everythingPtrBtn.setEnabled(self._iseSAMMode)
+        
         
     def openEverythingDialog(self):
             dialog = ParameterDialog(self.canvas._ai_everything)

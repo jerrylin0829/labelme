@@ -26,6 +26,7 @@ from segment_anything.utils.amg import (
 )
 from torchvision.ops.boxes import batched_nms, box_area
 
+''''''
 class EfficientSAM_Everything:
     def __init__(self, model, dev, grid_size=10, min_region_area=200, nms_thresh=0.5,iqr_factor=1.5,min_filter_area=100):
         if dev != None and torch.cuda.is_available() :
@@ -42,7 +43,12 @@ class EfficientSAM_Everything:
         self.img = None
         self.cropImg = None
         
+    '''
+        nms_thresh : 越小 mask 越少,反之亦然 -> 算各 mask 的 IOU 
+        iqr_factor : 過濾 mask 的參數，用來過濾 
+        min_filter_area : 最小目標物件大小, 避免噪點被選取
         
+    '''
     def setImg(self, img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         

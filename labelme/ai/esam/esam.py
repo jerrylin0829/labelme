@@ -331,7 +331,7 @@ def build_efficient_sam(encoder_patch_embed_dim, encoder_num_heads, dev, checkpo
             with open(checkpoint, "rb") as f:
                 if torch.cuda.is_available():
                     if dev is None:
-                        state_dict = torch.load(f, map_location="cuda")
+                        state_dict = torch.load(f, map_location="cuda",weights_only=True)
                     else:
                         state_dict = torch.load(f, map_location=f"cuda:{dev}")
                 else:

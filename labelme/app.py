@@ -934,7 +934,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 logger.info(f"Number of available GPUs: {gpu_count}") 
 
             except  ImportError as e :
-                self.show_message_box("ImportError", f"{e}")
+                self.showMessageBox("ImportError", f"{e}")
                 logger.error(f"ImportError: {e}")
 
         # if 'CPUExecutionProvider' in  inference_option :
@@ -945,7 +945,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
         self._selectRunModeComboBox.currentIndexChanged.connect(        
-            self.inference_dev_change
+            self.inferenceDevChange
         )
         
         self._selectRunModeComboBox.setEnabled(False) 
@@ -1066,7 +1066,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # if self.firstStart:
         #    QWhatsThis.enterWhatsThisMode()
 
-    def show_message_box(self, title, message): ## added by Alvin
+    def showMessageBox(self, title, message): ## added by Alvin
         msg_box = QMessageBox()
         msg_box.setWindowTitle(title)
         msg_box.setText(message)
@@ -1076,7 +1076,7 @@ class MainWindow(QtWidgets.QMainWindow):
          self._setEverythingGridInput.setValue(int(value))
          self.canvas.setEverythingGrid(int(value))
 
-    def inference_dev_change(self, index):  #! added by Alvin
+    def inferenceDevChange(self, index):  #! added by Alvin
         if self.canvas._ai_everything == None :
                 self.canvas._ai_everything_initDev = index          
         else:
@@ -1091,7 +1091,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.seteSAMEverythingDev(cuda_num)
         logger.info(self.canvas.getEverythingCudaNum())
         selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0 )
-        self.show_message_box(
+        self.showMessageBox(
                 "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
         ) 
         self._selectRunModeComboBox.setEnabled(False) 

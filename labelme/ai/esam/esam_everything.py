@@ -202,7 +202,9 @@ class EfficientSAM_Everything:
         if len(masks) == 0:
             logger.warning("No masks to display.")
             return 
-        
+        for i, mask in enumerate(masks):
+            logger.info(f"Mask {i} shape: {mask.shape}")
+    
         ax.set_autoscale_on(False)
         img = np.ones((masks[0].shape[0], masks[0].shape[1], 4))
         img[:,:,3] = 0
@@ -225,6 +227,43 @@ class EfficientSAM_Everything:
         self.show_anns(masks, ax[1])
         ax[1].set_title("After filter")
         ax[1].axis('off')  
+        plt.show()
+    def show_final_masks(self, final_masks, color=(1.0, 0.0, 0.0)):
+        """
+        显示 final_masks，确保同一维度的 mask 使用相同的颜色
+        :param final_masks: 遮罩列表
+        :param color: 要使用的默认颜色 (默认是红色 RGB (1.0, 0.0, 0.0))
+        """
+        # 确保 final_masks 不为空
+        if len(final_masks) == 0:
+            logger.warning("No masks to display.")
+            return
+        
+        # 获取图像的形状
+        original_image = self.cropImg
+        img_shape = original_image.shape
+        
+        # 创建一个带透明度的彩色图像，用于显示 mask
+        colored_image = np.ones((img_shape[0], img_shape[1], 4))  # RGBA, 最后一个维度是透明度
+        colored_image[:, :, :3] = original_image / 255.0  # 设置原始图像（将值归一化为 [0, 1]）
+        colored_image[:, :, 3] = 1  # 不透明
+        
+        # 为每个 mask 生成颜色列表，同一维度的 mask 共享颜色
+        num_masks = len(final_masks)
+        colors = np.random.rand(num_masks, 3)  # 为每个 mask 生成一个随机颜色 (RGB)
+        
+        # 遍历 final_masks 并给同一维度的 mask 相同颜色
+        for i, mask in enumerate(final_masks):
+            if i == 0:
+                continue  # 跳过第一个 mask
+                
+            # 使用相同的颜色（通过 i 确保相同维度的 mask 使用相同颜色）
+            colored_image[mask] = np.concatenate([colors[i], [0.5]])  # 设置透明度为 0.5
+        
+        # 显示最终的图像
+        plt.figure(figsize=(10, 10))
+        plt.imshow(colored_image)
+        plt.axis('off')  # 关闭坐标轴显示
         plt.show()
         
     def run_everything(self, bbox):
@@ -256,7 +295,14 @@ class EfficientSAM_Everything:
 
         rle = [mask_to_rle_pytorch(m[0:1]) for m in predicted_masks]
         predicted_masks = self.process_small_region(rle)
-
+        
+        alls = []
+        for mask in predicted_masks:
+            full_image_mask = np.zeros((self.img.shape[0], self.img.shape[1]), dtype=bool)
+            full_image_mask[y1:y2, x1:x2] = mask
+            alls.append(full_image_mask)
+        self.show_final_masks(predicted_masks)
+        
         filtered_masks, mask_areas, lower_bound, upper_bound = self.filter_masks_by_area(predicted_masks)
 
         final_masks = []
@@ -269,5 +315,5 @@ class EfficientSAM_Everything:
         logger.info(f"Area bounds: {lower_bound} - {upper_bound}")
         
         self.show_masks(filtered_masks, predicted_masks)
-        
+       
         return final_masks

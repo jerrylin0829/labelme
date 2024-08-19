@@ -201,7 +201,7 @@ class EfficientSAM_Everything:
     def show_anns(self, masks, ax): #! added by alvin
         if len(masks) == 0:
             logger.warning("No masks to display.")
-            return  
+            return 
         
         ax.set_autoscale_on(False)
         img = np.ones((masks[0].shape[0], masks[0].shape[1], 4))

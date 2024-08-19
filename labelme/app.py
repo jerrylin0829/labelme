@@ -37,11 +37,11 @@ from labelme.widgets import LabelListWidgetItem
 from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
+from labelme.widgets import ParameterDialog
 
-from PyQt5.QtCore import QVariant, Qt
-from PyQt5.QtWidgets import QMessageBox,QLineEdit,QHBoxLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMessageBox,QLineEdit,QPushButton,QDialog
 from .ai.eSam.esam_everything import GRID_SIZE
-from PyQt5.QtGui import QIntValidator
 from . import utils
 
 # FIXME
@@ -153,7 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label_dock.setObjectName("Label List")
         self.label_dock.setWidget(self.uniqLabelList)
 
-        self.fileSearch = QtWidgets.QLineEdit()
+        self.fileSearch = QLineEdit()
         self.fileSearch.setPlaceholderText(self.tr("Search Filename"))
         self.fileSearch.textChanged.connect(self.fileSearchChanged)
         self.fileListWidget = QtWidgets.QListWidget()
@@ -913,8 +913,8 @@ class MainWindow(QtWidgets.QMainWindow):
         inference_option = _utils.getAiInferenceOption()
         logger.info(provider)
 
-        if 'CPUExecutionProvider' in  inference_option :
-            RUN_MODES.append("CPU")
+        # if 'CPUExecutionProvider' in  inference_option :
+        #     RUN_MODES.append("CPU")
         
         if 'CUDAExecutionProvider'  in inference_option: # added by Alvin
             try :
@@ -955,6 +955,15 @@ class MainWindow(QtWidgets.QMainWindow):
         setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
         self._setEverythingGridInput.setEnabled(False)
         
+
+        setEverythingPtr = QtWidgets.QWidgetAction(self)
+        setEverythingPtr.setDefaultWidget(QtWidgets.QWidget())
+        setEverythingPtr.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+        self._everythingPtrBtn = QPushButton('Everything Parameter Settings', self)
+        self._everythingPtrBtn.clicked.connect(self.openEverythingDialog)
+        setEverythingPtr.defaultWidget().layout().addWidget(self._everythingPtrBtn)
+        self._everythingPtrBtn.setEnabled(False)
+        
         self.tools = self.toolbar("Tools")
         self.actions.tool = (
             open_,
@@ -978,7 +987,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self._toggleSAMeverything,
             selectAiModel,
             selectRunMode,
-            setEverythingGrid
+            setEverythingGrid,
+            setEverythingPtr
         )
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
         self.statusBar().show()
@@ -1056,46 +1066,41 @@ class MainWindow(QtWidgets.QMainWindow):
          self.canvas.setEverythingGrid(int(value))
 
     def inference_dev_change(self, index):  #! added by Alvin
-        
-        if self.canvas._ai_everything is None:
-            self.canvas._ai_everything_initDev = index
-            return
-        
-        if self._iseSAMMode or self.canvas.createMode == "ai_everything":
+        if self.canvas._ai_everything is None and  self.canvas.createMode in ['ai_everything']:
+            self.canvas._ai_everything_initDev = index          
+        else:
+            self._selectRunModeComboBox.setEnabled(False)
             
-            device_index = int(index)
-            self.canvas.seteSAMEverythingDev(device_index) 
-            logger.info(f"seteSAMEverythingDev is switched to cuda: {device_index}")
-            
-
-            selected_device = self._selectRunModeComboBox.currentText()
-            self.show_message_box(
-                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
-            )
-
-            
-    def toggleSAMeverything(self, bbox):#! added by Alvin 
-        self.canvas.initializeAiEverything()
-        logger.info(self.canvas.createMode)
-        self._selectRunModeComboBox.setEnabled(True)
-        
-        if self.canvas.createMode in ["ai_everything"] :
-            logger.info("ai_everything")
-
+    def toggleSAMeverything(self):#! added by Alvin 
+        self.toggleDrawMode(False, createMode="ai_everything")
+        self.canvas.initializeAiEverything() 
+        self._everythingPtrBtn.setEnabled(self._iseSAMMode)
+        cuda_num = self.canvas.getEverythingCudaNum()
+        selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0)
+        self.show_message_box(
+                "Inference device has been changed", f"Now using \n{selected_device}\n in Everything mode."
+        ) 
+        self._selectRunModeComboBox.setEnabled(False) 
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))
          
     def changeAiMode(self): #! added by Alvin
         logger.info(self.canvas.createMode)
-        self.toggleDrawMode(False, createMode="ai_everything")
         
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
-        self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
+        self._selectRunModeComboBox.setEnabled(self._iseSAMMode if self.canvas._ai_everything is None else False)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
-                    
+        
+        
+    def openEverythingDialog(self):
+            dialog = ParameterDialog(self.canvas._ai_everything)
+            dialog.load_parameters()
+            if dialog.exec_() == QDialog.Accepted:  
+                dialog.setParameters() 
+                               
 
   
     def menu(self, title, actions=None):
@@ -1922,6 +1927,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggleActions(True)
         self.canvas.setFocus()
         self.status(str(self.tr("Loaded %s")) % osp.basename(str(filename)))
+        
+        if self.canvas.createMode == "ai_everything" :
+            self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
+            logger.warn("Img load into everything.")   
         return True
 
     def resizeEvent(self, event):

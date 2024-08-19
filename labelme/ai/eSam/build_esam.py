@@ -17,8 +17,8 @@ def build_efficient_sam_vitt(dev=None):
 
 def build_efficient_sam_vits(dev=None):
     return build_efficient_sam(
-        dev,
         encoder_patch_embed_dim=384,
         encoder_num_heads=6,
-        checkpoint="/home/diffusion/2024_summer_intern/labelme/labelme/ai/weights/efficient_sam_vits.pt",
+        dev=dev,
+        checkpoint=r"labelme/ai/weights/efficient_sam_vits.pt"
     ).eval()

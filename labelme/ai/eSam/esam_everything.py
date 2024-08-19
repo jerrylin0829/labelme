@@ -28,7 +28,7 @@ from torchvision.ops.boxes import batched_nms, box_area
 FILTER_MODE = ['IQR','Median']
 
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=0,iqr_factor=0.7,filter_delta=10,min_filter_area=None):
+    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=1,iqr_factor=0.7,filter_delta=200,min_filter_area=None):
         if dev != None and torch.cuda.is_available() :
             self.device = torch.device(f"cuda:{dev}")
         else:
@@ -50,7 +50,6 @@ class EfficientSAM_Everything:
         iqr_factor (for IQR): 過濾 mask 的參數，用來過濾 
         min_filter_area : 最小目標物件大小, 避免噪點被選取
         filter_delta (for Median) : 中位數左右各一個範圍來取值
-        fliter_mode - Median : 不適合過度離散的場景/輸入
         '''
     def setImg(self, img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -157,41 +156,58 @@ class EfficientSAM_Everything:
         masks = torch.ge(masks, 0.0)
         return masks, iou_
     
-    def filter_masks_by_area(self,masks): #! added by alvin
+    def filter_masks_by_area(self, masks):  # ! added by alvin
+        mask_areas = [np.sum(mask) for mask in masks]  # todo :計算每個遮罩的面積
         
-        mask_areas = [np.sum(mask) for mask in masks] # todo: area counting
-        
-        #todo :for IQR
         if FILTER_MODE[self.fliter_mode] == 'IQR':
-            Q1 = np.percentile(mask_areas, 25)   
-            Q3 = np.percentile(mask_areas, 75)  
-            IQR = Q3 - Q1  
-            lower_bound = max(Q1 - self.iqr_factor * IQR, 0)  
+            Q1 = np.percentile(mask_areas, 25)
+            Q3 = np.percentile(mask_areas, 75)
+            IQR = Q3 - Q1
+            lower_bound = max(Q1 - self.iqr_factor * IQR, 0)
             upper_bound = Q3 + self.iqr_factor * IQR
-            
-        #todo :for median
+        
         elif FILTER_MODE[self.fliter_mode] == 'Median':
-            median = np.median(mask_areas)
+            sorted_mask_areas = sorted(mask_areas)
+            median = np.median(sorted_mask_areas)
             lower_bound = median - self.filter_delta
             upper_bound = median + self.filter_delta
-            logger.info(f"mask_areas :{mask_areas}")
-            
-        filtered_masks = [
-            mask for mask, area in zip(masks, mask_areas)
+            logger.info(f"mask_areas: {sorted_mask_areas}")
+
+        filtered_masks_with_areas = [
+            (mask, area) for mask, area in zip(masks, mask_areas)
             if lower_bound <= area <= upper_bound
         ]
-            
+        
+        filtered_masks, filtered_mask_areas = zip(*filtered_masks_with_areas) if filtered_masks_with_areas else ([], [])
+
+        eliminated_mask = [
+            mask for mask, area in zip(masks, mask_areas)
+            if area < lower_bound or area > upper_bound
+        ]
+
         if self.min_filter_area is not None:
-            filtered_masks = [
-                mask for mask, area in zip(filtered_masks, mask_areas)
+            filtered_masks_with_areas = [
+                (mask, area) for mask, area in zip(filtered_masks, filtered_mask_areas)
                 if area > self.min_filter_area
             ]
             
+            if filtered_masks_with_areas:
+                filtered_masks, filtered_mask_areas = zip(*filtered_masks_with_areas)
+            else:
+                filtered_masks, filtered_mask_areas = [], []
+
         if len(filtered_masks) == 0:
             logger.warning("No masks found after filtering.")
-            
-        return filtered_masks, mask_areas, lower_bound, upper_bound   
-     
+        
+        
+        logger.warning(f"Median: {median}")
+        logger.warning(f"origin: { sorted([np.sum(mask) for mask in sorted_mask_areas] )}")
+        logger.warning(f"filtered_masks: {sorted([np.sum(mask) for mask in filtered_masks])}")
+        logger.warning(f"eliminated_mask: {[np.sum(mask) for mask in eliminated_mask]}")
+
+        return filtered_masks, sorted_mask_areas, lower_bound, upper_bound
+
+
     def show_anns(self, masks, ax): #! added by alvin
         if len(masks) == 0:
             logger.warning("No masks to display.")
@@ -270,8 +286,8 @@ class EfficientSAM_Everything:
             full_image_mask[y1:y2, x1:x2] = mask
             final_masks.append(full_image_mask)
         
-        logger.info(f"Filtered mask count: {len(filtered_masks)}")
-        logger.info(f"Area bounds: {lower_bound} - {upper_bound}")
+        # logger.info(f"Filtered mask count: {len(filtered_masks)}")
+        # logger.info(f"Area bounds: {lower_bound} - {upper_bound}")
         
         self.show_masks(filtered_masks, predicted_masks)
         

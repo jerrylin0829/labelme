@@ -10,6 +10,7 @@ from skimage.measure import approximate_polygon
 from skimage.measure import find_contours
 from skimage.measure import label
 from skimage.measure import regionprops
+import torch
 
 import labelme.ai
 import labelme.utils
@@ -120,7 +121,7 @@ class Canvas(QtWidgets.QWidget):
 
         self._ai_model = None
         self._ai_everything = None #! added by alvin - for eSAM everything 
-        self._ai_everything_initDev = None #! added by alvin - for eSAM everything init
+        self._ai_everything_initDev = 0 if torch.cuda.is_available() else None #! added by alvin - for eSAM everything init
         
     def fillDrawing(self):
         return self._fill_drawing

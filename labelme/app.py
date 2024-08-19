@@ -1077,9 +1077,6 @@ class MainWindow(QtWidgets.QMainWindow):
          self.canvas.setEverythingGrid(int(value))
 
     def inference_dev_change(self, index):  #! added by Alvin
-        self.show_message_box(
-                "Inference device has been changed", f"Now using \n{index}\n in Everything mode."
-        ) 
         if self.canvas._ai_everything == None :
                 self.canvas._ai_everything_initDev = index          
         else:
@@ -1104,13 +1101,13 @@ class MainWindow(QtWidgets.QMainWindow):
          
     def changeAiMode(self): #! added by Alvin
         logger.info(self.canvas.createMode)
-        #self.toggleDrawMode(False, createMode="ai_everything")
         
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
         self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
+        self._everythingPtrBtn.setEnabled(self._iseSAMMode)   
                     
     def openEverythingDialog(self):
         dialog = ParameterDialog(self.canvas._ai_everything)

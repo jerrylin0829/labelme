@@ -267,13 +267,14 @@ class EfficientSAM_Everything:
         rle = [mask_to_rle_pytorch(m[0:1]) for m in predicted_masks]
         predicted_masks = self.process_small_region(rle)
         '''
-        使用 break & find_contours 功能消除下方註解 
+        使用 break & find_contours 功能消除下方註解 -> 要記得去 finalise 把 break 的註解拿掉
         '''
         # final_masks = []
         # for mask in predicted_masks:
         #     full_image_mask = np.zeros((self.img.shape[0], self.img.shape[1]), dtype=bool)
         #     full_image_mask[y1:y2, x1:x2] = mask
         #     final_masks.append(full_image_mask)
+        ''' break & find_contours 功能註解範圍 '''
         
         '''
         使用參數化消除功能消除下方註解 
@@ -285,9 +286,8 @@ class EfficientSAM_Everything:
             full_image_mask = np.zeros((self.img.shape[0], self.img.shape[1]), dtype=bool)
             full_image_mask[y1:y2, x1:x2] = mask
             final_masks.append(full_image_mask)
-        
-        # logger.info(f"Filtered mask count: {len(filtered_masks)}")
-        # logger.info(f"Area bounds: {lower_bound} - {upper_bound}")
+            
+        '''參數化消除功能註解範圍 '''
         
         self.show_masks(filtered_masks, predicted_masks)
         

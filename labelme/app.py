@@ -40,7 +40,7 @@ from labelme.widgets import ZoomWidget
 
 from PyQt5.QtCore import QVariant, Qt
 from PyQt5.QtWidgets import QMessageBox,QLineEdit,QHBoxLayout
-from .ai.esam.esam_everything import GRID_SIZE
+from .ai.eSam.esam_everything import GRID_SIZE
 from PyQt5.QtGui import QIntValidator
 from . import utils
 
@@ -1692,7 +1692,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 shape.group_id = group_id
                 shape.description = description
                 self.addLabel(shape)
-            
+
             self.actions.editMode.setEnabled(True)
             self.actions.undoLastPoint.setEnabled(False)
             self.actions.undo.setEnabled(True)

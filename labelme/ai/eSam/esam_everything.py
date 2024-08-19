@@ -28,7 +28,7 @@ from torchvision.ops.boxes import batched_nms, box_area
 FILTER_MODE = ['IQR','Median']
 
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=1,iqr_factor=0.7,filter_delta=200,min_filter_area=None):
+    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=1,iqr_factor=0.7,filter_delta=200,min_filter_area=100):
         if dev != None and torch.cuda.is_available() :
             self.device = torch.device(f"cuda:{dev}")
         else:

@@ -17,11 +17,10 @@ from labelme import QT5
 from labelme.logger import logger
 from labelme.shape import Shape
 
-from ..ai._utils import compute_mask_mix_polygon
-
+from ..ai._utils import compute_multipolygon_from_mask
 ## for EfficientSAM_Everything
-from ..ai.esam.esam_everything import EfficientSAM_Everything
-from ..ai.esam.build_esam import build_efficient_sam_vits
+from ..ai.eSam.esam_everything import EfficientSAM_Everything
+from ..ai.eSam.build_esam import build_efficient_sam_vits
 
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
@@ -184,7 +183,8 @@ class Canvas(QtWidgets.QWidget):
          self._ai_everything.setImg(
             labelme.utils.img_qt_to_arr(img)
         )       
-    def runEverything(self,bbox): #!added by alvin (要調整) 
+    def runEverything(self,bbox): #!added by alvin 
+        # print(self._ai_everything)
         masks = self._ai_everything.run_everything(bbox)
         return masks
     
@@ -845,7 +845,7 @@ class Canvas(QtWidgets.QWidget):
             )
 
             # Compute polygons from the mask
-            polygons = compute_mask_mix_polygon(mask)
+            polygons = compute_multipolygon_from_mask(mask)
 
             for points in polygons:
                 if len(points) > 2:
@@ -960,27 +960,39 @@ class Canvas(QtWidgets.QWidget):
                 point_labels=self.current.point_labels,
             )
 
+            # # Find contours using skimage
+            # contours = find_contours(mask, 0.5)
+            # for contour in contours:
+            #     if len(contour) >= 2:  # Valid polygon should have at least 3 points
+            #         POLYGON_APPROX_TOLERANCE = 0.08  # Increase to reduce points
+            #         polygon = approximate_polygon(
+            #             coords=contour,
+            #             tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+            #         )
+            #         # polygon = polygon[:-1]  # drop last point that is duplicate of first point
+
+            #         points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
+
+            #         # Create a new shape for each connected component
+            #         self.new_shape = self.current.copy()
+            #         self.new_shape.setShapeRefined(
+            #             shape_type="polygon",
+            #             points=points,
+            #             point_labels=[1] * len(points),
+            #             mask=None  # Optional: you can set the mask if needed
+            #         )
             # Find contours using skimage
-            contours = find_contours(mask, 0.5)
-            for contour in contours:
-                if len(contour) >= 3:  # Valid polygon should have at least 3 points
-                    POLYGON_APPROX_TOLERANCE = 0.04  # Increase to reduce points
-                    polygon = approximate_polygon(
-                        coords=contour,
-                        tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
-                    )
-                    polygon = polygon[:-1]  # drop last point that is duplicate of first point
-
-                    points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
-
+            polygons = compute_multipolygon_from_mask(mask)
+            for points in polygons:
+                if len(points) >= 2:  # Valid polygon should have at least 2 points
                     # Create a new shape for each connected component
                     self.new_shape = self.current.copy()
                     self.new_shape.setShapeRefined(
                         shape_type="polygon",
-                        points=points,
+                        points=[QtCore.QPointF(point[0], point[1]) for point in points],
                         point_labels=[1] * len(points),
-                        mask=None  # Optional: you can set the mask if needed
                     )
+                    self.current.close()
                     self.shapes.append(self.new_shape)
         
         elif self.createMode == "ai_boundingbox":
@@ -1032,6 +1044,7 @@ class Canvas(QtWidgets.QWidget):
                     point_labels=[1, 1],
                     mask=sub_mask
                 )
+                self.current.close()
                 self.shapes.append(self.new_shape)
         #''' for eSAM everything '''
         
@@ -1040,9 +1053,22 @@ class Canvas(QtWidgets.QWidget):
             x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
             bbox = (x1, y1, x2, y2)
             masks = self.runEverything(bbox) 
-            
+            # polygons = compute_multipolygon_from_mask(masks)
+            # for points in polygons:
+            #     if len(points) >= 2:  # Valid polygon should have at least 2 points
+            #         # Create a new shape for each connected component
+            #         self.new_shape = self.current.copy()
+            #         self.new_shape.setShapeRefined(
+            #             shape_type="polygon",
+            #             points=[QtCore.QPointF(point[0], point[1]) for point in points],
+            #             point_labels=[1] * len(points),
+            #         )
+            #         self.current.close()
+            #         self.shapes.append(self.new_shape)
+            print(f"num of masks: {len(masks)}")
             for mask in masks:
-                contours = find_contours(mask, 0.5)
+                contours = find_contours(mask)
+                print(f"num of contours: {len(contours)}")
                 for contour in contours:
                     if len(contour) >= 3:  
                         POLYGON_APPROX_TOLERANCE = 0.04  
@@ -1050,7 +1076,7 @@ class Canvas(QtWidgets.QWidget):
                             coords=contour,
                             tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
                         )
-                        polygon = polygon[:-1]  
+                        # polygon = polygon[:-1]  
 
                         points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
 
@@ -1062,7 +1088,10 @@ class Canvas(QtWidgets.QWidget):
                             point_labels=[1] * len(points),
                             mask=None  
                         )
+                        self.current.close()
                         self.shapes.append(self.new_shape)
+                break
+                
         else:
             self.current.close()
             self.shapes.append(self.current)

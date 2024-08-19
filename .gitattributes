@@ -1,0 +1,1 @@
+labelme/ai/weights/efficient_sam_vits.pt filter=lfs diff=lfs merge=lfs -text

@@ -46,7 +46,7 @@ def compute_polygon_from_mask(mask):
         return np.empty((0, 2), dtype=np.float32)
 
     contour = max(contours, key=_get_contour_length)
-    POLYGON_APPROX_TOLERANCE = 0.004
+    POLYGON_APPROX_TOLERANCE = 0.08
     polygon = skimage.measure.approximate_polygon(
         coords=contour,
         tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
@@ -65,9 +65,9 @@ def compute_polygon_from_mask(mask):
 
     return polygon[:, ::-1]  # yx -> xy
 
-def compute_mask_mix_polygon(mask):
+def compute_multipolygon_from_mask(mask):
     # Find contours in the mask
-    contours = skimage.measure.find_contours(np.pad(mask, pad_width=1), level=0.5)
+    contours = skimage.measure.find_contours(np.pad(mask, pad_width=1))
     if len(contours) == 0:
         logger.warning("No contour found, so returning empty polygon!")
         return np.empty((0, 2), dtype=np.float32)
@@ -75,7 +75,7 @@ def compute_mask_mix_polygon(mask):
     polygons = []
     
     for contour in contours:
-        POLYGON_APPROX_TOLERANCE = 0.004
+        POLYGON_APPROX_TOLERANCE = 0.08
         polygon = skimage.measure.approximate_polygon(
             coords=contour,
             tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,

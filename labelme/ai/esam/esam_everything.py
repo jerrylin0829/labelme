@@ -182,12 +182,12 @@ class EfficientSAM_Everything:
         fig, ax = plt.subplots(1, 2, figsize=(12, 12))            
         ax[0].imshow(self.cropImg)
         self.show_anns(mask2, ax[0])
-        ax[0].set_title("origin")
+        ax[0].set_title("Before filter")
         ax[0].axis('off')
 
         ax[1].imshow(self.cropImg)
         self.show_anns(masks, ax[1])
-        ax[1].set_title("with mask")
+        ax[1].set_title("After filter")
         ax[1].axis('off')  
         plt.show()
         

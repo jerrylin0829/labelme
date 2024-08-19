@@ -179,6 +179,7 @@ class Canvas(QtWidgets.QWidget):
         if  self._ai_everything == None:
             model = build_efficient_sam_vits()
             self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev)
+            logger.warn(self._ai_everything_initDev)
         self._ai_everything.setImg(
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
@@ -205,6 +206,7 @@ class Canvas(QtWidgets.QWidget):
         self._ai_everything.setIQR(iqr)   
 
     def getEverythingCudaNum(self):#!added by alvin
+        logger.warn(self._ai_everything.getInferenceDev())
         return self._ai_everything.getInferenceDev()
         
     def getEverythingGrid(self): #!added by alvin
@@ -1070,49 +1072,34 @@ class Canvas(QtWidgets.QWidget):
         #''' for eSAM everything '''
         
         elif self.createMode == "ai_everything":
-            x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
-            x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
-            bbox = (x1, y1, x2, y2)
-            masks = self.runEverything(bbox) 
-            # polygons = compute_multipolygon_from_mask(masks)
-            # for points in polygons:
-            #     if len(points) >= 2:  # Valid polygon should have at least 2 points
-            #         # Create a new shape for each connected component
-            #         self.new_shape = self.current.copy()
-            #         self.new_shape.setShapeRefined(
-            #             shape_type="polygon",
-            #             points=[QtCore.QPointF(point[0], point[1]) for point in points],
-            #             point_labels=[1] * len(points),
-            #         )
-            #         self.current.close()
-            #         self.shapes.append(self.new_shape)
-            print(f"num of masks: {len(masks)}")
-            for mask in masks:
-                contours = find_contours(mask)
-                print(f"num of contours: {len(contours)}")
-                for contour in contours:
-                    if len(contour) >= 3:  
-                        POLYGON_APPROX_TOLERANCE = 0.04  
-                        polygon = approximate_polygon(
-                            coords=contour,
-                            tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
-                        )
-                        # polygon = polygon[:-1]  
-
-                        points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
-
-                        
-                        self.new_shape = self.current.copy()
-                        self.new_shape.setShapeRefined(
-                            shape_type="polygon",
-                            points=points,
-                            point_labels=[1] * len(points),
-                            mask=None  
-                        )
-                        self.current.close()
-                        self.shapes.append(self.new_shape)
-                break
+                x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
+                x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
+                bbox = (x1, y1, x2, y2)
+                masks = self.runEverything(bbox) 
                 
+                for mask in masks:
+                    contours = find_contours(mask, 0.5)
+                    for contour in contours:
+                        if len(contour) >= 3:  
+                            POLYGON_APPROX_TOLERANCE = 0.04  
+                            polygon = approximate_polygon(
+                                coords=contour,
+                                tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                            )
+                            polygon = polygon[:-1]  
+
+                            points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
+
+                            
+                            self.new_shape = self.current.copy()
+                            self.new_shape.setShapeRefined(
+                                shape_type="polygon",
+                                points=points,
+                                point_labels=[1] * len(points),
+                                mask=None  
+                            )
+                            self.shapes.append(self.new_shape)
+                    #break
         else:
             self.current.close()
             self.shapes.append(self.current)
@@ -1122,6 +1109,7 @@ class Canvas(QtWidgets.QWidget):
         self.setHiding(True)
         self.newShape.emit()
         self.update()
+    
     
     
     def closeEnough(self, p1, p2):

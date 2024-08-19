@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -26,9 +25,10 @@ from segment_anything.utils.amg import (
 )
 from torchvision.ops.boxes import batched_nms, box_area
 
-''''''
+FILTER_MODE = ['IQR','Median']
+
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=10, min_region_area=200, nms_thresh=0.5,iqr_factor=1.5,min_filter_area=None):
+    def __init__(self, model, dev, grid_size=10, min_region_area=200, nms_thresh=0.5,fliter_mode=0,iqr_factor=1.5,filter_delta=10,min_filter_area=None):
         if dev != None and torch.cuda.is_available() :
             self.device = torch.device(f"cuda:{dev}")
         else:
@@ -38,17 +38,21 @@ class EfficientSAM_Everything:
         self.grid_size = grid_size
         self.nms_thresh = nms_thresh
         self.iqr_factor  = iqr_factor
-        self.min_region_area = min_region_area #! Used to deal with noise
-        self.min_filter_area = min_filter_area #! For filtering the output
+        self.min_region_area = min_region_area
+        self.min_filter_area = min_filter_area
+        self.filter_delta = filter_delta
+        self.fliter_mode = fliter_mode
         self.img = None
         self.cropImg = None
         
-    '''
+        '''
         nms_thresh : 越小 mask 越少,反之亦然 -> 算各 mask 的 IOU 
         iqr_factor : 過濾 mask 的參數，用來過濾 
         min_filter_area : 最小目標物件大小, 避免噪點被選取
+        filter_delta : 中位數左右各一個範圍來取值
+        fliter_mode - Median : 不適合過度離散的場景/輸入
         
-    '''
+        '''
     def setImg(self, img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
@@ -59,12 +63,18 @@ class EfficientSAM_Everything:
     def setGridSize(self, grid_size):
         self.grid_size = grid_size
         
+    def setFliterMode(self,mode):
+        self.fliter_mode = mode
+           
     def setNMS(self,nms_thresh):
         self.nms_thresh = nms_thresh
         
     def setMinFilterArea(self,min_filter_area):
         self.min_filter_area = min_filter_area
-      
+
+    def setDelta(self,filter_delta):
+        self.filter_delta = filter_delta
+          
     def setIQR(self,iqr):
         self.iqr_factor = iqr
         
@@ -74,6 +84,9 @@ class EfficientSAM_Everything:
     def getInferenceDev(self):
         return self.device.index
     
+    def getFliterMode(self):
+        return self.fliter_mode
+    
     def getNMS(self):
         return self.nms_thresh 
     
@@ -82,7 +95,10 @@ class EfficientSAM_Everything:
     
     def getIQR(self):
         return self.iqr_factor
-      
+    
+    def getDelta(self):
+        return self.filter_delta   
+       
     def process_small_region(self, rles):
         new_masks = []
         scores = []
@@ -142,31 +158,52 @@ class EfficientSAM_Everything:
         masks = torch.ge(masks, 0.0)
         return masks, iou_
     
-    def filter_masks_by_area(self,masks, min_filter_area=None): #! added by alvin
+    def filter_masks_by_area(self,masks, min_filter_area=None,delta=50): #! added by alvin
         
         mask_areas = [np.sum(mask) for mask in masks] # todo: area counting
         
-        Q1 = np.percentile(mask_areas, 25)   
-        Q3 = np.percentile(mask_areas, 75)  
-        IQR = Q3 - Q1  
-
-        logger.info(f"mask_areas :{mask_areas}")
-        lower_bound = max(Q1 - self.iqr_factor * IQR, 0)  
-        upper_bound = Q3 + self.iqr_factor * IQR
+        if self.filter_delta is None and self.iqr_factor is None:
+            self.filter_delta = 50
         
-        filtered_masks = [
-            mask for mask, area in zip(masks, mask_areas)
-            if lower_bound <= area <= upper_bound
-        ]
+        #todo :for IQR
+        if FILTER_MODE[self.fliter_mode] == 'IQR':
+            Q1 = np.percentile(mask_areas, 25)   
+            Q3 = np.percentile(mask_areas, 75)  
+            IQR = Q3 - Q1  
+            lower_bound = max(Q1 - self.iqr_factor * IQR, 0)  
+            upper_bound = Q3 + self.iqr_factor * IQR
+            
+            filtered_masks = [
+                mask for mask, area in zip(masks, mask_areas)
+                if lower_bound <= area <= upper_bound
+            ]
+            
+        #todo :for median
+        elif FILTER_MODE[self.fliter_mode] == 'Median':
+            
+            median = np.median(mask_areas)
+            lower_bound = median - self.filter_delta
+            upper_bound = median + self.filter_delta
+            logger.info(f"mask_areas :{mask_areas}")
+            
+            # 修正: mask 应该根据 area 过滤
+            filtered_masks = [mask for mask, area in zip(masks, mask_areas) if lower_bound <= area <= upper_bound]
+
         
         if min_filter_area is not None:
             filtered_masks = [
                 mask for mask, area in zip(filtered_masks, mask_areas)
                 if area > min_filter_area
             ]
+        if len(filtered_masks) == 0:
+            logger.warning("No masks found after filtering.")
         return filtered_masks, mask_areas, lower_bound, upper_bound   
      
     def show_anns(self, masks, ax): #! added by alvin
+        if len(masks) == 0:
+            logger.warning("No masks to display.")
+            return  # 提前退出
+        
         ax.set_autoscale_on(False)
         img = np.ones((masks[0].shape[0], masks[0].shape[1], 4))
         img[:,:,3] = 0
@@ -232,7 +269,6 @@ class EfficientSAM_Everything:
         logger.info(f"Filtered mask count: {len(filtered_masks)}")
         logger.info(f"Area bounds: {lower_bound} - {upper_bound}")
         
-        self.show_masks(filtered_masks,predicted_masks)
+        self.show_masks(filtered_masks, predicted_masks)
         
         return final_masks
-

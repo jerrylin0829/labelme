@@ -59,7 +59,7 @@ class ParameterDialog(QDialog):
         nms_thresh, min_filter_area, delta, IQR, filter_mode= self.getParameters()
         self.param1.setValue(nms_thresh)
         self.param2.setValue(min_filter_area if min_filter_area is not None else 0)
-        if filter_mode :
+        if filter_mode == 0 :
             self.param4.setValue(IQR)
         else:
             self.param3.setValue(delta)

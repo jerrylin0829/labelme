@@ -1109,11 +1109,35 @@ class MainWindow(QtWidgets.QMainWindow):
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
         self._everythingPtrBtn.setEnabled(self._iseSAMMode)   
                     
-    def openEverythingDialog(self):
+    def openEverythingDialog(self): #! added by Alvin
         dialog = ParameterDialog(self.canvas._ai_everything)
         dialog.load_parameters()
         if dialog.exec_() == QDialog.Accepted:  
             dialog.setParameters() 
+            
+    def batchVramSplit(self): #! added by Alvin
+        batchForm = QDialog(self)
+        batchForm.setWindowTitle("Batch VRAM Split")
+
+        layout = QtWidgets.QFormLayout()
+
+        batchForm.param1 = QtWidgets.QSpinBox(batchForm)
+        batchForm.param1.setRange(0, 1024)
+        batchForm.param1.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        layout.addRow('Batch size:', batchForm.param1)
+
+        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        button_box.accepted.connect(batchForm.accept)  
+        button_box.rejected.connect(batchForm.reject) 
+        layout.addWidget(button_box)
+
+        batchForm.setLayout(layout)
+
+        if batchForm.exec_() == QDialog.Accepted:
+            batch_size = batchForm.param1.value()
+            MAX_QUERIES_PER_BATCH = batch_size
+            print(f"Batch size selected: {MAX_QUERIES_PER_BATCH}")
+
 
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)
@@ -1247,28 +1271,6 @@ class MainWindow(QtWidgets.QMainWindow):
         url = "https://github.com/labelmeai/labelme/tree/main/examples/tutorial"  # NOQA
         webbrowser.open(url)
         
-    def batchVramSplit(self):
-        batchForm = QDialog(self)
-        batchForm.setWindowTitle("Batch VRAM Split")
-
-        layout = QtWidgets.QFormLayout()
-
-        batchForm.param1 = QtWidgets.QDoubleSpinBox(batchForm)
-        batchForm.param1.setRange(0, 1024)
-        batchForm.param1.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        layout.addRow('Batch size:', batchForm.param1)
-
-        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
-        button_box.accepted.connect(batchForm.accept)  
-        button_box.rejected.connect(batchForm.reject) 
-        layout.addWidget(button_box)
-
-        batchForm.setLayout(layout)
-
-        if batchForm.exec_() == QDialog.Accepted:
-            batch_size = batchForm.param1.value()
-            MAX_QUERIES_PER_BATCH = batch_size
-            print(f"Batch size selected: {MAX_QUERIES_PER_BATCH}")
 
         
     def toggleDrawingSensitive(self, drawing=True):

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
      QDialog, QFormLayout, QSpinBox, QDialogButtonBox, QDoubleSpinBox, QAbstractSpinBox,QComboBox
 )
-from ..ai.esam.esam_everything import EfficientSAM_Everything,FILTER_MODE
+from ..ai.eSam.esam_everything import FILTER_MODE
 
 class ParameterDialog(QDialog):
     def __init__(self, esam_instance, parent=None):

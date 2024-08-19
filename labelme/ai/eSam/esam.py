@@ -12,12 +12,13 @@ import torch
 import torch.nn.functional as F
 
 from torch import nn, Tensor
-import time
-import json
 from labelme.logger import logger
 from .esam_decoder import MaskDecoder, PromptEncoder
 from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
+
+MAX_QUERIES_PER_BATCH = 200 #! ADDED BY ALVIN
+
 
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0
@@ -191,7 +192,7 @@ class EfficientSam(nn.Module):
         batched_images: torch.Tensor,
         batched_points: torch.Tensor,
         batched_point_labels: torch.Tensor,
-        max_queries_per_batch: int = 1024,  #! New para.
+        max_queries_per_batch: int = MAX_QUERIES_PER_BATCH,  #! added by alvin (New para.)
         scale_to_original_image_size: bool = True,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """

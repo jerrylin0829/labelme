@@ -37,13 +37,14 @@ from labelme.widgets import LabelListWidgetItem
 from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
-from labelme.widgets import ParameterDialog
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMessageBox,QLineEdit,QPushButton,QDialog
+from PyQt5.QtCore import QVariant, Qt
+from PyQt5.QtWidgets import QMessageBox,QPushButton,QDialog
 from .ai.eSam.esam_everything import GRID_SIZE
+from PyQt5.QtGui import QIntValidator
+from .widgets.parameter_dialog import ParameterDialog
 from . import utils
-
+from .ai.eSam.esam import MAX_QUERIES_PER_BATCH
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -153,7 +154,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label_dock.setObjectName("Label List")
         self.label_dock.setWidget(self.uniqLabelList)
 
-        self.fileSearch = QLineEdit()
+        self.fileSearch = QtWidgets.QLineEdit()
         self.fileSearch.setPlaceholderText(self.tr("Search Filename"))
         self.fileSearch.textChanged.connect(self.fileSearchChanged)
         self.fileListWidget = QtWidgets.QListWidget()
@@ -534,7 +535,13 @@ class MainWindow(QtWidgets.QMainWindow):
             icon="help",
             tip=self.tr("Show tutorial page"),
         )
-
+        batchVramSplit =action(
+            self.tr("&Split Size"),
+            self.batchVramSplit,
+            icon="help",
+            tip=self.tr("Limiting the number of batch processes to save VRAM"),
+        )
+ 
         zoom = QtWidgets.QWidgetAction(self)
         zoomBoxLayout = QtWidgets.QVBoxLayout()
         zoomLabel = QtWidgets.QLabel(self.tr("Zoom"))
@@ -641,7 +648,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Automatic mask generator with SAM model"), 
             enabled=False,
         )
-        changeAImode = action (
+        self._changeAImode = action (
             self.tr("&Enable Everything"),
             self.changeAiMode,
             None,
@@ -719,7 +726,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWidth=fitWidth,
             brightnessContrast=brightnessContrast,
             toggleSAMeverything=self._toggleSAMeverything,
-            changeAImode= changeAImode,
+            changeAImode=self._changeAImode,
             zoomActions=zoomActions,
             openNextImg=openNextImg,
             openPrevImg=openPrevImg,
@@ -782,7 +789,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 editMode,
                 brightnessContrast,
-                changeAImode,
+                self._changeAImode,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
         )
@@ -794,6 +801,7 @@ class MainWindow(QtWidgets.QMainWindow):
             edit=self.menu(self.tr("&Edit")),
             view=self.menu(self.tr("&View")),
             help=self.menu(self.tr("&Help")),
+            batchVramSplit = self.menu(self.tr("&Batch VRAM split")),
             recentFiles=QtWidgets.QMenu(self.tr("Open &Recent")),
             labelList=labelMenu,
         )
@@ -818,6 +826,8 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
         )
         utils.addActions(self.menus.help, (help,))
+        batchVramSplit
+        utils.addActions(self.menus.batchVramSplit, (batchVramSplit,))
         utils.addActions(
             self.menus.view,
             (
@@ -842,7 +852,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 None,
                 brightnessContrast,
                 self._toggleSAMeverything,
-                changeAImode,
+                self._changeAImode,
             ),
         )
 
@@ -913,8 +923,6 @@ class MainWindow(QtWidgets.QMainWindow):
         inference_option = _utils.getAiInferenceOption()
         logger.info(provider)
 
-        # if 'CPUExecutionProvider' in  inference_option :
-        #     RUN_MODES.append("CPU")
         
         if 'CUDAExecutionProvider'  in inference_option: # added by Alvin
             try :
@@ -929,6 +937,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.show_message_box("ImportError", f"{e}")
                 logger.error(f"ImportError: {e}")
 
+        # if 'CPUExecutionProvider' in  inference_option :
+        #     RUN_MODES.append("CPU")
+            
         self._selectRunModeComboBox.addItems(RUN_MODES)
         self._selectRunModeComboBox.setCurrentIndex(mode_index)    
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
@@ -936,6 +947,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectRunModeComboBox.currentIndexChanged.connect(        
             self.inference_dev_change
         )
+        
         self._selectRunModeComboBox.setEnabled(False) 
         
         ''' setEverythingGrid UI''' # added by alvin
@@ -954,7 +966,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._setEverythingGridInput.textChanged.connect(self.setEverythingGridInputVal)
         setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
         self._setEverythingGridInput.setEnabled(False)
-        
 
         setEverythingPtr = QtWidgets.QWidgetAction(self)
         setEverythingPtr.setDefaultWidget(QtWidgets.QWidget())
@@ -962,9 +973,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._everythingPtrBtn = QPushButton('Everything Parameter Settings', self)
         self._everythingPtrBtn.clicked.connect(self.openEverythingDialog)
         setEverythingPtr.defaultWidget().layout().addWidget(self._everythingPtrBtn)
-        self._everythingPtrBtn.setEnabled(False)
-        
+        self._everythingPtrBtn.setEnabled(False)        
         self.tools = self.toolbar("Tools")
+
         self.actions.tool = (
             open_,
             opendir,
@@ -983,7 +994,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWindow,
             zoom,
             None,
-            changeAImode,
+            self._changeAImode,
             self._toggleSAMeverything,
             selectAiModel,
             selectRunMode,
@@ -1066,19 +1077,26 @@ class MainWindow(QtWidgets.QMainWindow):
          self.canvas.setEverythingGrid(int(value))
 
     def inference_dev_change(self, index):  #! added by Alvin
-        if self.canvas._ai_everything is None and  self.canvas.createMode in ['ai_everything']:
-            self.canvas._ai_everything_initDev = index          
+        self.show_message_box(
+                "Inference device has been changed", f"Now using \n{index}\n in Everything mode."
+        ) 
+        if self.canvas._ai_everything == None :
+            #if index != 1 :
+                self.canvas._ai_everything_initDev = index          
         else:
             self._selectRunModeComboBox.setEnabled(False)
+
             
     def toggleSAMeverything(self):#! added by Alvin 
         self.toggleDrawMode(False, createMode="ai_everything")
-        self.canvas.initializeAiEverything() 
-        self._everythingPtrBtn.setEnabled(self._iseSAMMode)
-        cuda_num = self.canvas.getEverythingCudaNum()
-        selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0)
+        self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
+        
+        cuda_num = self.canvas._ai_everything_initDev
+        self.canvas.seteSAMEverythingDev(cuda_num)
+        logger.info(self.canvas.getEverythingCudaNum())
+        selected_device = self._selectRunModeComboBox.itemText(cuda_num if cuda_num is not None else 0 )
         self.show_message_box(
-                "Inference device has been changed", f"Now using \n{selected_device}\n in Everything mode."
+                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
         ) 
         self._selectRunModeComboBox.setEnabled(False) 
         
@@ -1087,22 +1105,20 @@ class MainWindow(QtWidgets.QMainWindow):
          
     def changeAiMode(self): #! added by Alvin
         logger.info(self.canvas.createMode)
+        #self.toggleDrawMode(False, createMode="ai_everything")
         
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
-        self._selectRunModeComboBox.setEnabled(self._iseSAMMode if self.canvas._ai_everything is None else False)
+        self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
         self._setEverythingGridInput.setEnabled(self._iseSAMMode)
-        
-        
+                    
     def openEverythingDialog(self):
-            dialog = ParameterDialog(self.canvas._ai_everything)
-            dialog.load_parameters()
-            if dialog.exec_() == QDialog.Accepted:  
-                dialog.setParameters() 
-                               
+        dialog = ParameterDialog(self.canvas._ai_everything)
+        dialog.load_parameters()
+        if dialog.exec_() == QDialog.Accepted:  
+            dialog.setParameters() 
 
-  
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)
         if actions:
@@ -1234,7 +1250,31 @@ class MainWindow(QtWidgets.QMainWindow):
     def tutorial(self):
         url = "https://github.com/labelmeai/labelme/tree/main/examples/tutorial"  # NOQA
         webbrowser.open(url)
+        
+    def batchVramSplit(self):
+        batchForm = QDialog(self)
+        batchForm.setWindowTitle("Batch VRAM Split")
 
+        layout = QtWidgets.QFormLayout()
+
+        batchForm.param1 = QtWidgets.QDoubleSpinBox(batchForm)
+        batchForm.param1.setRange(0, 1024)
+        batchForm.param1.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        layout.addRow('Batch size:', batchForm.param1)
+
+        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        button_box.accepted.connect(batchForm.accept)  
+        button_box.rejected.connect(batchForm.reject) 
+        layout.addWidget(button_box)
+
+        batchForm.setLayout(layout)
+
+        if batchForm.exec_() == QDialog.Accepted:
+            batch_size = batchForm.param1.value()
+            MAX_QUERIES_PER_BATCH = batch_size
+            print(f"Batch size selected: {MAX_QUERIES_PER_BATCH}")
+
+        
     def toggleDrawingSensitive(self, drawing=True):
         """Toggle drawing sensitive.
 
@@ -1432,7 +1472,9 @@ class MainWindow(QtWidgets.QMainWindow):
             filename = self.imageList[currIndex]
             if filename:
                 self.loadFile(filename)
+                logger.info(f"loadFile {type(self.imageData)}")
 
+                    
     # React to canvas signals.
     def shapeSelectionChanged(self, selected_shapes):
         self._noSelectionSlot = True
@@ -1697,7 +1739,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 shape.group_id = group_id
                 shape.description = description
                 self.addLabel(shape)
-
+            
             self.actions.editMode.setEnabled(True)
             self.actions.undoLastPoint.setEnabled(False)
             self.actions.undo.setEnabled(True)
@@ -1922,15 +1964,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.brightnessContrast_values[self.filename] = (brightness, contrast)
         if brightness is not None or contrast is not None:
             dialog.onNewValue(None)
+        
+        if self.canvas.createMode == "ai_everything" :
+            self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
+            logger.warn("img load into everything.")  
+                     
         self.paintCanvas()
         self.addRecentFile(self.filename)
         self.toggleActions(True)
         self.canvas.setFocus()
         self.status(str(self.tr("Loaded %s")) % osp.basename(str(filename)))
-        
-        if self.canvas.createMode == "ai_everything" :
-            self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
-            logger.warn("Img load into everything.")   
         return True
 
     def resizeEvent(self, event):

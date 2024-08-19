@@ -41,7 +41,7 @@ from labelme.widgets import ParameterDialog
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox,QLineEdit,QPushButton,QDialog
-from .ai.esam.esam_everything import GRID_SIZE
+from .ai.eSam.esam_everything import GRID_SIZE
 from . import utils
 
 # FIXME
@@ -1697,7 +1697,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 shape.group_id = group_id
                 shape.description = description
                 self.addLabel(shape)
-            
+
             self.actions.editMode.setEnabled(True)
             self.actions.undoLastPoint.setEnabled(False)
             self.actions.undo.setEnabled(True)

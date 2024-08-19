@@ -13,31 +13,30 @@ class ParameterDialog(QDialog):
         self.setWindowTitle('Parameter Settings')
 
         layout = QFormLayout()
-
-        self.param1 = QDoubleSpinBox(self)
-        self.param1.setRange(0, 1.0)
-        self.param1.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.nms_thresh = QDoubleSpinBox(self)
+        self.nms_thresh.setRange(0, 1.0)
+        self.nms_thresh.setButtonSymbols(QAbstractSpinBox.NoButtons)
         
-        self.param2 = QSpinBox(self)
-        self.param2.setRange(0, 400)
-        self.param2.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.min_filter_area = QSpinBox(self)
+        self.min_filter_area.setRange(0, 400)
+        self.min_filter_area.setButtonSymbols(QAbstractSpinBox.NoButtons)
         
-        self.param3 = QSpinBox(self)
-        self.param3.setRange(1, 400)
-        self.param3.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.delta = QSpinBox(self)
+        self.delta.setRange(1, 400)
+        self.delta.setButtonSymbols(QAbstractSpinBox.NoButtons)
         
-        self.param4 = QDoubleSpinBox(self)
-        self.param4.setRange(0, 3.0)
-        self.param4.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.IQR = QDoubleSpinBox(self)
+        self.IQR.setRange(0, 3.0)
+        self.IQR.setButtonSymbols(QAbstractSpinBox.NoButtons)
                 
-        self.param5 = QComboBox(self)
-        self.param5.addItems(FILTER_MODE)
+        self.filter_mode = QComboBox(self)
+        self.filter_mode.addItems(FILTER_MODE)
         
-        layout.addRow('NMS thresh:', self.param1)
-        layout.addRow('Min Filter Area (MFA):', self.param2)
-        layout.addRow('Component delta:', self.param3)
-        layout.addRow('IQR:', self.param4)
-        layout.addRow('Filter Mode:', self.param5)
+        layout.addRow('NMS thresh:', self.nms_thresh)
+        layout.addRow('Min Filter Area (MFA):', self.min_filter_area)
+        layout.addRow('Component delta:', self.delta)
+        layout.addRow('IQR:', self.IQR)
+        layout.addRow('Filter Mode:', self.filter_mode)
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
@@ -49,18 +48,18 @@ class ParameterDialog(QDialog):
         return self.esam_instance.getNMS(), self.esam_instance.getMinFilterArea(), self.esam_instance.getDelta(),self.esam_instance.getIQR(),self.esam_instance.getFliterMode(),
 
     def setParameters(self):
-        self.esam_instance.setNMS(self.param1.value())
-        self.esam_instance.setMinFilterArea(self.param2.value())
-        self.esam_instance.setDelta(self.param3.value())
-        self.esam_instance.setIQR(self.param4.value())
-        self.esam_instance.setFliterMode(self.param5.currentIndex())
+        self.esam_instance.setNMS(self.nms_thresh.value())
+        self.esam_instance.setMinFilterArea(self.min_filter_area.value())
+        self.esam_instance.setDelta(self.delta.value())
+        self.esam_instance.setIQR(self.IQR.value())
+        self.esam_instance.setFliterMode(self.filter_mode.currentIndex())
         
     def load_parameters(self):
         nms_thresh, min_filter_area, delta, IQR, filter_mode= self.getParameters()
-        self.param1.setValue(nms_thresh)
-        self.param2.setValue(min_filter_area if min_filter_area is not None else 0)
+        self.nms_thresh.setValue(nms_thresh)
+        self.min_filter_area.setValue(min_filter_area if min_filter_area is not None else 0)
         if filter_mode == 0 :
-            self.param4.setValue(IQR)
+            self.IQR.setValue(IQR)
         else:
-            self.param3.setValue(delta)
-        self.param5.setCurrentIndex(filter_mode)
+            self.delta.setValue(delta)
+        self.filter_mode.setCurrentIndex(filter_mode)

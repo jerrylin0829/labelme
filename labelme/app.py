@@ -1081,7 +1081,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 "Inference device has been changed", f"Now using \n{index}\n in Everything mode."
         ) 
         if self.canvas._ai_everything == None :
-            #if index != 1 :
                 self.canvas._ai_everything_initDev = index          
         else:
             self._selectRunModeComboBox.setEnabled(False)

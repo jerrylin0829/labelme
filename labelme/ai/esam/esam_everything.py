@@ -28,7 +28,7 @@ from torchvision.ops.boxes import batched_nms, box_area
 FILTER_MODE = ['IQR','Median']
 
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=10, min_region_area=200, nms_thresh=0.5,fliter_mode=0,iqr_factor=1.5,filter_delta=10,min_filter_area=None):
+    def __init__(self, model, dev, grid_size=10, min_region_area=200, nms_thresh=0.5,fliter_mode=0,iqr_factor=0.7,filter_delta=10,min_filter_area=None):
         if dev != None and torch.cuda.is_available() :
             self.device = torch.device(f"cuda:{dev}")
         else:
@@ -186,7 +186,6 @@ class EfficientSAM_Everything:
             upper_bound = median + self.filter_delta
             logger.info(f"mask_areas :{mask_areas}")
             
-            # 修正: mask 应该根据 area 过滤
             filtered_masks = [mask for mask, area in zip(masks, mask_areas) if lower_bound <= area <= upper_bound]
 
         
@@ -202,7 +201,7 @@ class EfficientSAM_Everything:
     def show_anns(self, masks, ax): #! added by alvin
         if len(masks) == 0:
             logger.warning("No masks to display.")
-            return  # 提前退出
+            return  
         
         ax.set_autoscale_on(False)
         img = np.ones((masks[0].shape[0], masks[0].shape[1], 4))

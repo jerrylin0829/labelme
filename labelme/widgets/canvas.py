@@ -122,6 +122,7 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model = None
         self._ai_everything = None #! added by alvin - for eSAM everything 
         self._ai_everything_initDev = 0 if torch.cuda.is_available() else None #! added by alvin - for eSAM everything init
+        self._ai_grid = 0
         
     def fillDrawing(self):
         return self._fill_drawing
@@ -185,7 +186,12 @@ class Canvas(QtWidgets.QWidget):
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
         
-     
+    def setBatchQuery(self,val):
+        self._ai_everything.model.setBatchQuery(val)
+        
+    def getBatchQuery(self):
+        return self._ai_everything.model.getBatchQuery()   
+    
     def runEverything(self,bbox): #!added by alvin (要調整) 
         masks = self._ai_everything.run_everything(bbox)
         return masks

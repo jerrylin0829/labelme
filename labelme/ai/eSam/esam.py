@@ -50,6 +50,7 @@ class EfficientSam(nn.Module):
         self.prompt_encoder = prompt_encoder
         self.decoder_max_num_input_points = decoder_max_num_input_points
         self.mask_decoder = mask_decoder
+        self.max_queries_per_batch = MAX_QUERIES_PER_BATCH
         self.register_buffer(
             "pixel_mean", torch.Tensor(pixel_mean).view(1, 3, 1, 1), False
         )
@@ -153,7 +154,12 @@ class EfficientSam(nn.Module):
             iou_predictions, (batch_size, max_num_queries, num_predictions)
         )
         return output_masks, iou_predictions
-
+    def setBatchQuery(self,val):
+        self.max_queries_per_batch = val
+        
+    def getBatchQuery(self):
+        return self.max_queries_per_batch   
+        
     def get_rescaled_pts(self, batched_points: torch.Tensor, input_h: int, input_w: int):
         return torch.stack(
             [
@@ -211,7 +217,8 @@ class EfficientSam(nn.Module):
             low_res_mask: A tensor of shape [B, 256, 256] of predicted masks
             iou_predictions: A tensor of shape [B, max_num_queries] of estimated IOU scores
         """
-
+        max_queries_per_batch = self.max_queries_per_batch
+        
         batch_size, num_queries, max_num_pts, _ = batched_points.shape
         image_embeddings = self.get_image_embeddings(batched_images)
         

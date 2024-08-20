@@ -131,7 +131,7 @@ class EfficientSAM_Everything:
         img = img.to(self.device)
         points = points.to(self.device)
         point_labels = point_labels.to(self.device)
-        
+        print(self.model.getBatchQuery())
         predicted_masks, predicted_iou = self.model(
             img[None, ...], points, point_labels
         )

@@ -11,6 +11,7 @@ from skimage.measure import find_contours
 from skimage.measure import label
 from skimage.measure import regionprops
 import torch
+import traceback
 import labelme.ai
 import labelme.utils
 from labelme import QT5
@@ -22,6 +23,7 @@ from ..ai._utils import compute_multipolygon_from_mask
 from ..ai.eSam.esam_everything import EfficientSAM_Everything
 from ..ai.eSam.build_esam import build_efficient_sam_vits
 
+import gc
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
 
@@ -1094,7 +1096,31 @@ class Canvas(QtWidgets.QWidget):
                 x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
                 bbox = (x1, y1, x2, y2)
                 
-                masks = self.runEverything(bbox) 
+                try :
+                    masks = self.runEverything(bbox) 
+                except RuntimeError as e:
+                    if "out of memory" in str(e).lower():
+                        logger.fatal(f"{e}")
+                        del self._ai_everything
+                        torch.cuda.empty_cache()
+                        gc.collect() 
+                        logger.warning("Model and cache cleared after OOM.")
+                        logger.warning("Try to reloading model.")
+                        try:
+                            logger.info("Rebuilding the model after OOM.")
+                            self._ai_everything = self.initialize_ai_model()  
+                            masks = self.runEverything(bbox)  
+                        except Exception as e:
+                            logger.fatal(f"Failed to rebuild model: {e}")
+                            logger.fatal(traceback.format_exc()) 
+                            return       
+                    else:
+                        logger.fatal(f"Runtime error: {e}")
+                        raise  
+                except Exception as e:
+                    logger.fatal(f"Runtime Error :{e}")
+                    raise
+                    
                 
                 for mask in masks:
                     contours = find_contours(mask)

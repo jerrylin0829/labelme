@@ -31,6 +31,7 @@ class EfficientSam:
         self._providers = _utils.set_providers(list_idx)
         self._encoder_session = ort.InferenceSession(self._encoder_path, providers=self._providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path, providers=self._providers)
+        
         logger.info("Mode is modified")
 
     def set_image(self, image: np.ndarray):

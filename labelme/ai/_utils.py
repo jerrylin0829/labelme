@@ -4,32 +4,57 @@ import onnxruntime as ort
 import skimage
 
 from labelme.logger import logger
+from PyQt5.QtWidgets import QMessageBox
+
+class MessageBox:
+    def __init__(self):
+        pass
+
+    def showMessageBox(self, title, message):
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.exec_()
 
 
-def get_available_providers(cuda_num=0): ## added by Alvin
+msg_box = MessageBox()
+
+def get_available_providers(cuda_num=0):
     check_list = ort.get_available_providers()
     try:
-
+        import torch
         if 'CUDAExecutionProvider' in check_list:
             logger.info(f"CUDA {cuda_num} is available and can be used.")
-            providers = [
-                ('CUDAExecutionProvider', {
-                    'device_id': cuda_num,
-                })]
+            providers = [('CUDAExecutionProvider', {'device_id': cuda_num})]
+            # msg_box.showMessageBox(
+            #     "Info", f"GPU {cuda_num} is available and will be used.\nInference device switched to {torch.cuda.get_device_name(cuda_num)} in Everything mode."
+            # )
             return providers
-        
+    except ImportError as e:
+        msg_box.showMessageBox(
+            "ImportError", f"Failed to import torch: {e}"
+        )
+        logger.error(f"ImportError: {e}")
+        return ['CPUExecutionProvider']
     except Exception as e:
-        logger.warning(f"Error checking GPU availability: {e}")
-    logger.info("CUDAExecutionProvider is not available, using CPUExecutionProvider.")
+        msg_box.showMessageBox(
+            "Error", f"Error checking GPU availability: {e}"
+        )
+        logger.error(f"Error checking GPU availability: {e}")
     
+    msg_box.showMessageBox(
+        "Warning", "CUDAExecutionProvider is not available, using CPUExecutionProvider."
+    )
     return ['CPUExecutionProvider']
 
 
-def set_providers(mode): ## added by Alvin
+def set_providers(mode): 
     if mode == 0:
-        logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
+        msg_box.showMessageBox(
+            "Info", "CPU Mode Selected: CPUExecutionProvider is available and will be used."
+        )
         return ['CPUExecutionProvider']
-    return get_available_providers(abs(mode))
+    return get_available_providers(mode - 1)
 
 def getAiInferenceOption():
     return ort.get_available_providers()
@@ -42,7 +67,9 @@ def _get_contour_length(contour):
 def compute_polygon_from_mask(mask):
     contours = skimage.measure.find_contours(np.pad(mask, pad_width=1))
     if len(contours) == 0:
-        logger.warning("No contour found, so returning empty polygon.")
+        msg_box.showMessageBox(
+            "Warning","No contour found, so returning empty polygon."
+        )  
         return np.empty((0, 2), dtype=np.float32)
 
     contour = max(contours, key=_get_contour_length)

@@ -38,11 +38,11 @@ from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
-from PyQt5.QtCore import QVariant, Qt
-from PyQt5.QtWidgets import QMessageBox,QPushButton,QDialog
+from PyQt5.QtCore import  Qt
+from PyQt5.QtWidgets import QPushButton,QDialog
 from .ai.eSam.esam_everything import GRID_SIZE
-from PyQt5.QtGui import QIntValidator
 from .widgets.parameter_dialog import ParameterDialog
+from .widgets.msg_box import MessageBox
 from . import utils
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
@@ -197,7 +197,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
-
+        
+        self.msgBox = MessageBox()
+        
         self.setCentralWidget(scrollArea)
 
         features = QtWidgets.QDockWidget.DockWidgetFeatures()
@@ -863,7 +865,56 @@ class MainWindow(QtWidgets.QMainWindow):
                 action("&Move here", self.moveShape),
             ),
         )
+        
+        ''' selectRunMode UI for normal AI'''
+        ## added by Alvin
+        selectRunMode_nE = QtWidgets.QWidgetAction(self)
+        selectRunMode_nE.setDefaultWidget(QtWidgets.QWidget())
+        selectRunMode_nE.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
+        ## added by Alvin
+        selectRunModeLabel_nE = QtWidgets.QLabel(self.tr("Selected Inference Device Switch"))
+        selectRunModeLabel_nE.setAlignment(QtCore.Qt.AlignCenter)
+        selectRunMode_nE.defaultWidget().layout().addWidget(selectRunModeLabel_nE)
 
+        ## added by Alvin
+        self._selectRunModeComboBox_nE = QtWidgets.QComboBox()
+        selectRunMode_nE.defaultWidget().layout().addWidget(self._selectRunModeComboBox_nE)
+
+        mode_index_nE = 0 
+        provider = _utils.get_available_providers()
+        inference_option = _utils.getAiInferenceOption()
+
+        
+        if 'CPUExecutionProvider' in  inference_option :
+            self._selectRunModeComboBox_nE.addItem("CPU")
+            
+        if 'CUDAExecutionProvider' in inference_option: # added by Alvin
+            try :
+                import torch
+
+                gpu_count = torch.cuda.device_count()
+                for cuda_idx in range(gpu_count):
+                    RUN_MODES.append(f'GPU {cuda_idx} : {torch.cuda.get_device_name(cuda_idx)}')
+                logger.info(f"Number of available GPUs: {gpu_count}") 
+
+            except  ImportError as e :
+                self.msgBox.showMessageBox(
+                    "ImportError", f"{e}"
+                )
+                logger.error(f"ImportError: {e}")
+
+            
+        self._selectRunModeComboBox_nE.addItems(RUN_MODES)
+        self._selectRunModeComboBox_nE.setCurrentIndex(mode_index_nE)    
+        logger.info(f'{self._selectRunModeComboBox_nE.currentText()}')
+    
+        self._selectRunModeComboBox_nE.currentIndexChanged.connect(        
+            self.inferenceDevChange_nE
+        )
+        
+        
+        #self._selectRunModeComboBox_nE.setEnabled(False) 
+        
         ''' selectAiModel UI '''
         selectAiModel = QtWidgets.QWidgetAction(self)
         selectAiModel.setDefaultWidget(QtWidgets.QWidget())
@@ -899,13 +950,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox.setEnabled(False) 
         
         
-        ''' selectRunMode UI '''
+        ''' selectRunMode UI for Everything'''
         ## added by Alvin
         selectRunMode = QtWidgets.QWidgetAction(self)
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
         selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
         ## added by Alvin
-        selectRunModeLabel = QtWidgets.QLabel(self.tr("Selected Inference Device Switch"))
+        selectRunModeLabel = QtWidgets.QLabel(self.tr("Selected Inference Device Switch [EVE]"))
         selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
         selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
 
@@ -914,33 +965,13 @@ class MainWindow(QtWidgets.QMainWindow):
         selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
 
         mode_index = 0 
-        provider = _utils.get_available_providers()
-        inference_option = _utils.getAiInferenceOption()
-        logger.info(provider)
-
-        
-        if 'CUDAExecutionProvider'  in inference_option: # added by Alvin
-            try :
-                import torch
-
-                gpu_count = torch.cuda.device_count()
-                for cuda_idx in range(gpu_count):
-                    RUN_MODES.append(f'GPU {cuda_idx} : {torch.cuda.get_device_name(cuda_idx)}')
-                logger.info(f"Number of available GPUs: {gpu_count}") 
-
-            except  ImportError as e :
-                self.showMessageBox("ImportError", f"{e}")
-                logger.error(f"ImportError: {e}")
-
-        # if 'CPUExecutionProvider' in  inference_option :
-        #     RUN_MODES.append("CPU")
             
         self._selectRunModeComboBox.addItems(RUN_MODES)
         self._selectRunModeComboBox.setCurrentIndex(mode_index)    
         logger.info(f'{self._selectRunModeComboBox.currentText()}')
     
         self._selectRunModeComboBox.currentIndexChanged.connect(        
-            self.inferenceDevChange
+            self.inferenceDevChange4Everything
         )
         
         self._selectRunModeComboBox.setEnabled(False) 
@@ -989,6 +1020,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWindow,
             zoom,
             None,
+            selectRunMode_nE,
             self._changeAImode,
             self._toggleSAMeverything,
             selectAiModel,
@@ -1061,30 +1093,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # if self.firstStart:
         #    QWhatsThis.enterWhatsThisMode()
 
-    def showMessageBox(self, title, message): #! added by Alvin
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle(title)
-        msg_box.setText(message)
-        msg_box.exec_()
-        
-    def setEverythingGridInputVal(self,value):
+    def setEverythingGridInputVal(self,value): #! added by Alvin
         self._setEverythingGridInput.setValue(int(value))
         self.canvas.setEverythingGrid(int(value))
 
-    def inferenceDevChange(self, index):  #! added by Alvin
-        """
-        Change the inference device based on the selected index.
-        If no AI model is initialized yet, store the device index for future use.
-        """
-        if self.canvas._ai_everything is None:
-            if self.canvas._ai_model is None:
+
+    def inferenceDevChange_nE(self, index):   #! added by Alvin
+         if self.canvas._ai_model != None:
+             self.canvas._ai_model.set_providers(index)
+             
+    def inferenceDevChange4Everything(self, index):  #! added by Alvin
+        if self.canvas._ai_everything == None:
                 self.canvas._ai_everything_initDev = index
-            else:
-                self.canvas._ai_model.set_providers(index)
         else:
             self._selectRunModeComboBox.setEnabled(False)
-
-
             
     def toggleSAMeverything(self):#! added by Alvin 
         self._isTopPanel = True
@@ -1101,7 +1123,7 @@ class MainWindow(QtWidgets.QMainWindow):
         selected_device = self._selectRunModeComboBox.itemText(
             cuda_num if cuda_num is not None else 0 
         )
-        self.showMessageBox(
+        self.msgBox.showMessageBox(
                 "Info", f"Inference device switched to \n {selected_device} \n in Everything mode."
         ) 
         self._selectRunModeComboBox.setEnabled(False) 
@@ -1134,9 +1156,9 @@ class MainWindow(QtWidgets.QMainWindow):
             
     def batchVramSplit(self):  #! added by Alvin
         if self.canvas._ai_everything is None :
-            self.showMessageBox(
+            self.msgBox.showMessageBox(
                 "Info", f"Please activate Everything mode before making the settings."
-            ) 
+            )
             return
         
         def load_parameters():

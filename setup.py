@@ -54,9 +54,21 @@ def get_install_requires():
     if os.name == "nt": # windows
         install_requires.append("colorama")
 
-    # Use the correct CUDA version to determine which onnxruntime package to install
     print(f"CUDA version detected in setup: {cuda_version}")
-    install_requires.append("onnxruntime-gpu" if cuda_version is not None else "onnxruntime")
+    
+    if cuda_version is not None:
+        if cuda_version.startswith("12"):
+            install_requires.append("onnxruntime-gpu>=1.18.0")
+        elif cuda_version.startswith("11.8"):
+            install_requires.append("onnxruntime-gpu>=1.17.0")
+        elif cuda_version.startswith("11.6"):
+            install_requires.append("onnxruntime-gpu>=1.14.0")
+        elif cuda_version.startswith("11.4"):
+            install_requires.append("onnxruntime-gpu>=1.10.0")
+        else:
+            install_requires.append("onnxruntime") 
+    else:
+        install_requires.append("onnxruntime")
 
     return install_requires
 

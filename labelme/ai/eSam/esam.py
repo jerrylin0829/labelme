@@ -10,8 +10,8 @@ from labelme.logger import logger
 from .esam_decoder import MaskDecoder, PromptEncoder
 from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
-
-MAX_QUERIES_PER_BATCH = 200 #! ADDED BY ALVIN
+from ...widgets.msg_box import MessageBox
+MAX_QUERIES_PER_BATCH = 50 #! ADDED BY ALVIN
 
 
 class EfficientSam(nn.Module):
@@ -124,7 +124,9 @@ class EfficientSam(nn.Module):
             multimask_output=multimask_output,
         )
         _, num_predictions, low_res_size, _ = low_res_masks.shape
-
+        
+        torch.cuda.empty_cache()
+        
         if output_w > 0 and output_h > 0:
             output_masks = F.interpolate(
                 low_res_masks, (output_h, output_w), mode="bicubic"
@@ -238,7 +240,8 @@ class EfficientSam(nn.Module):
 
             all_masks.append(masks)
             all_ious.append(iou_predictions)
-
+            torch.cuda.empty_cache()
+            
         all_masks = torch.cat(all_masks, dim=1)  
         all_ious = torch.cat(all_ious, dim=1)
         
@@ -330,15 +333,25 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
         pixel_mean=[0.485, 0.456, 0.406],
         pixel_std=[0.229, 0.224, 0.225],
     )
+    msgbox = MessageBox()
     
     if not torch.cuda.is_available():
+        msgbox.showMessageBox(
+            "Error","CUDA is not available on this system."
+        )
         raise RuntimeError("CUDA is not available on this system.")
     
     if dev is not None and (not isinstance(dev, int) or dev < 0 or dev >= torch.cuda.device_count()):
+        msgbox.showMessageBox(
+            "Error",f"Invalid CUDA device index: {dev}. Available devices: {torch.cuda.device_count()}"
+        )
         raise ValueError(f"Invalid CUDA device index: {dev}. Available devices: {torch.cuda.device_count()}")
     
     if checkpoint is not None:
         if not os.path.exists(checkpoint):
+            msgbox.showMessageBox(
+            "Error",f"Checkpoint file '{checkpoint}' does not exist."
+            )
             raise FileNotFoundError(f"Checkpoint file '{checkpoint}' does not exist.")
         try:
             with open(checkpoint, "rb") as f:
@@ -348,16 +361,28 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
                     state_dict = torch.load(f, map_location=f"cuda:{dev}",weights_only=True)
                     
         except Exception as e:
+            msgbox.showMessageBox(
+            "Error",f"Error loading checkpoint: {e}"
+            )
             raise RuntimeError(f"Error loading checkpoint: {e}")
         if "model" not in state_dict:
+            msgbox.showMessageBox(
+            "Error",f"The checkpoint does not contain the expected 'model' key."
+            )
             raise KeyError(f"The checkpoint does not contain the expected 'model' key.")
 
         try:  
             sam.load_state_dict(state_dict["model"])
         except Exception as e:
+            msgbox.showMessageBox(
+            "Error",f"Error loading model state_dict: {e}"
+            )
             raise RuntimeError(f"Error loading model state_dict: {e}")
     else:
+        msgbox.showMessageBox(
+        "Error","No checkpoint file specified."
+        )        
         raise ValueError("No checkpoint file specified.")
-    
+    torch.cuda.empty_cache()
     return sam
 

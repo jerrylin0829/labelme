@@ -22,7 +22,7 @@ from ..ai._utils import compute_multipolygon_from_mask
 ## for EfficientSAM_Everything
 from ..ai.eSam.esam_everything import EfficientSAM_Everything
 from ..ai.eSam.build_esam import build_efficient_sam_vits
-
+from .msg_box import MessageBox
 import gc
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
@@ -46,7 +46,7 @@ class Canvas(QtWidgets.QWidget):
     drawingPolygon = QtCore.Signal(bool)
     vertexSelected = QtCore.Signal(bool)
     mouseMoved = QtCore.Signal(QtCore.QPointF)
-
+    msgBox = MessageBox()
     CREATE, EDIT = 0, 1
 
     # polygon, rectangle, line, or point
@@ -785,9 +785,6 @@ class Canvas(QtWidgets.QWidget):
     def paintEvent(self, event):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
-
-        # print(f"self._createMode = {self._createMode}")
-        # print(f"self._crosshair = {self._crosshair}")
         
         p = self._painter
         p.begin(self)
@@ -967,7 +964,27 @@ class Canvas(QtWidgets.QWidget):
     def outOfPixmap(self, p):
         w, h = self.pixmap.width(), self.pixmap.height()
         return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
+    
+    def try2RecoverEverything(self, bbox, retry_count=0, max_retries=3):
+ 
+        if retry_count >= max_retries:
+            self.msgBox.showMessageBox(
+                "Fatal", "Maximum number of retries exceeded, model cannot be recovered"
+            )
+            return None
 
+        try:
+            self.setEverythingGrid(int(self.getEverythingGrid() / 2))
+            masks = self.runEverything(bbox)
+        except Exception as e:
+            self.msgBox.showMessageBox(
+                "Fatal", f"Model Reconstruction Failure: {e}"
+            )
+            logger.fatal(traceback.format_exc())
+            return self.try2RecoverEverything(bbox, retry_count + 1, max_retries)
+        
+        return masks
+           
     def finalise(self):
         assert self.current
 
@@ -995,29 +1012,7 @@ class Canvas(QtWidgets.QWidget):
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels,
             )
-
-            # # Find contours using skimage
-            # contours = find_contours(mask, 0.5)
-            # for contour in contours:
-            #     if len(contour) >= 2:  # Valid polygon should have at least 3 points
-            #         POLYGON_APPROX_TOLERANCE = 0.08  # Increase to reduce points
-            #         polygon = approximate_polygon(
-            #             coords=contour,
-            #             tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
-            #         )
-            #         # polygon = polygon[:-1]  # drop last point that is duplicate of first point
-
-            #         points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
-
-            #         # Create a new shape for each connected component
-            #         self.new_shape = self.current.copy()
-            #         self.new_shape.setShapeRefined(
-            #             shape_type="polygon",
-            #             points=points,
-            #             point_labels=[1] * len(points),
-            #             mask=None  # Optional: you can set the mask if needed
-            #         )
-            # Find contours using skimage
+            
             polygons = compute_multipolygon_from_mask(mask)
             for points in polygons:
                 if len(points) >= 2:  # Valid polygon should have at least 2 points
@@ -1028,14 +1023,7 @@ class Canvas(QtWidgets.QWidget):
                         points=[QtCore.QPointF(point[0], point[1]) for point in points],
                         point_labels=[1] * len(points),
                     )
-                    print(self.new_shape.points)
-                    # for attr_name in dir(self.current):
-                    #     if not attr_name.startswith('__'):
-                    #         attr_value = getattr(self.current, attr_name)
-                    #         print(f"{attr_name}: {attr_value}")
-                    # print("-" * 40)  # 分隔符
                     self.current.close()
-                    # print("mask")
                     self.shapes.append(self.new_shape)
         
         elif self.createMode == "ai_boundingbox":
@@ -1089,7 +1077,8 @@ class Canvas(QtWidgets.QWidget):
                 )
                 self.current.close()
                 self.shapes.append(self.new_shape)
-        #''' for eSAM everything '''
+                
+        #! for eSAM everything 
         
         elif self.createMode == "ai_everything":
                 x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
@@ -1098,30 +1087,53 @@ class Canvas(QtWidgets.QWidget):
                 
                 try :
                     masks = self.runEverything(bbox) 
+                    
                 except RuntimeError as e:
                     if "out of memory" in str(e).lower():
                         logger.fatal(f"{e}")
                         del self._ai_everything
                         torch.cuda.empty_cache()
                         gc.collect() 
-                        logger.warning("Model and cache cleared after OOM.")
-                        logger.warning("Try to reloading model.")
+                        self.msgBox.showMessageBox(
+                            "Fatal","Model and cache cleared after OOM."
+                        )
+            
+                        self.msgBox.showMessageBox(
+                            "Warning","Try to reloading model."
+                        )
                         try:
-                            logger.info("Rebuilding the model after OOM.")
-                            self._ai_everything = self.initialize_ai_model()  
-                            masks = self.runEverything(bbox)  
+                            self._ai_everything = None
+                            self._ai_everything = self.initializeAiEverything()  # 問題點
+                            
+                            self.msgBox.showMessageBox(
+                                "Info","Rebuilding the model after OOM."
+                            )
+                            if self._ai_everything is None:
+                                self.msgBox.showMessageBox(
+                                    "Fatal",f"Failed to rebuild model: {e}"
+                                )                                
+                                raise RuntimeError("Failed to reinitialise the AI Everything model.")
+                            
+                            masks = self.try2RecoverEverything(bbox)
+                            
                         except Exception as e:
-                            logger.fatal(f"Failed to rebuild model: {e}")
+                            self.msgBox.showMessageBox(
+                                "Fatal","Model and cache cleared after OOM."
+                            )
                             logger.fatal(traceback.format_exc()) 
-                            return       
+                            return  None
                     else:
+                        self.msgBox.showMessageBox(
+                            "Fatal",f"Runtime error: {e}"
+                        )
                         logger.fatal(f"Runtime error: {e}")
                         raise  
                 except Exception as e:
-                    logger.fatal(f"Runtime Error :{e}")
+                    self.msgBox.showMessageBox(
+                        "Fatal",f"Runtime error: {e}"
+                    )
                     raise
                     
-                
                 for mask in masks:
                     contours = find_contours(mask)
                     for contour in contours:

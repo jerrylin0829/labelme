@@ -1,9 +1,3 @@
-
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 import os
 import math
 from typing import Any, List, Tuple, Type
@@ -265,6 +259,8 @@ class EfficientSam(nn.Module):
         return (x - self.pixel_mean) / self.pixel_std
 
 
+
+
 def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpoint=None):
     img_size = 1024
     encoder_patch_size = 16
@@ -334,12 +330,34 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
         pixel_mean=[0.485, 0.456, 0.406],
         pixel_std=[0.229, 0.224, 0.225],
     )
+    
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available on this system.")
+    
+    if dev is not None and (not isinstance(dev, int) or dev < 0 or dev >= torch.cuda.device_count()):
+        raise ValueError(f"Invalid CUDA device index: {dev}. Available devices: {torch.cuda.device_count()}")
+    
     if checkpoint is not None:
-        with open(checkpoint, "rb") as f:
-            if dev is None:
-                state_dict = torch.load(f, map_location="cuda:0") #Alvin
-            else :
-                state_dict = torch.load(f, map_location=f"cuda:{dev}") #Alvin
-        sam.load_state_dict(state_dict["model"])
+        if not os.path.exists(checkpoint):
+            raise FileNotFoundError(f"Checkpoint file '{checkpoint}' does not exist.")
+        try:
+            with open(checkpoint, "rb") as f:
+                if dev is None:
+                    state_dict = torch.load(f, map_location="cuda:0",weights_only=True)
+                else:
+                    state_dict = torch.load(f, map_location=f"cuda:{dev}",weights_only=True)
+                    
+        except Exception as e:
+            raise RuntimeError(f"Error loading checkpoint: {e}")
+        if "model" not in state_dict:
+            raise KeyError(f"The checkpoint does not contain the expected 'model' key.")
+
+        try:  
+            sam.load_state_dict(state_dict["model"])
+        except Exception as e:
+            raise RuntimeError(f"Error loading model state_dict: {e}")
+    else:
+        raise ValueError("No checkpoint file specified.")
+    
     return sam
 

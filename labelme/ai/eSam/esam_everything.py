@@ -25,10 +25,10 @@ from segment_anything.utils.amg import (
 )
 from torchvision.ops.boxes import batched_nms, box_area
 
-FILTER_MODE = ['IQR','Median']
+FILTER_MODE = ['Median']
 
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=1,iqr_factor=0.7,filter_delta=200,min_filter_area=100):
+    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5,fliter_mode=0,score = 0.9,iou=0.7,iqr_factor=0.7,filter_delta=200,min_filter_area=100):
         if dev != None and torch.cuda.is_available() :
             self.device = torch.device(f"cuda:{dev}")
         else:
@@ -40,6 +40,8 @@ class EfficientSAM_Everything:
         self.iqr_factor  = iqr_factor
         self.min_region_area = min_region_area
         self.min_filter_area = min_filter_area
+        self.score = score
+        self.iou_thresh = iou
         self.filter_delta = filter_delta
         self.fliter_mode = fliter_mode
         self.img = None
@@ -51,6 +53,7 @@ class EfficientSAM_Everything:
         min_filter_area : 最小目標物件大小, 避免噪點被選取
         filter_delta (for Median) : 中位數左右各一個範圍來取值
         '''
+        
     def setImg(self, img):
         self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
@@ -72,7 +75,13 @@ class EfficientSAM_Everything:
 
     def setDelta(self,filter_delta):
         self.filter_delta = filter_delta
-          
+        
+    def setScore(self,val):
+        self.score = val
+        
+    def setIOU(self,val):
+        self.iou_thresh = val
+               
     def setIQR(self,iqr):
         self.iqr_factor = iqr
         
@@ -95,8 +104,14 @@ class EfficientSAM_Everything:
         return self.iqr_factor
     
     def getDelta(self):
-        return self.filter_delta   
-       
+        return self.filter_delta 
+      
+    def getScore(self):
+        return self.score
+    
+    def getIOU(self):   
+        return self.iou_thresh
+    
     def process_small_region(self, rles):
         new_masks = []
         scores = []
@@ -131,7 +146,6 @@ class EfficientSAM_Everything:
         img = img.to(self.device)
         points = points.to(self.device)
         point_labels = point_labels.to(self.device)
-        print(self.model.getBatchQuery())
         predicted_masks, predicted_iou = self.model(
             img[None, ...], points, point_labels
         )
@@ -143,13 +157,13 @@ class EfficientSAM_Everything:
 
         predicted_masks = predicted_masks[0]
         iou = predicted_iou_scores[0, :, 0]
-        index_iou = iou > 0.7
+        index_iou = iou > self.iou_thresh
         iou_ = iou[index_iou]
         masks = predicted_masks[index_iou]
 
         score = calculate_stability_score(masks, 0.0, 1.0)
         score = score[:, 0]
-        index = score > 0.9
+        index = score > self.score
         score_ = score[index]
         masks = masks[index]
         iou_ = iou_[index]
@@ -159,20 +173,20 @@ class EfficientSAM_Everything:
     def filter_masks_by_area(self, masks):  # ! added by alvin
         mask_areas = [np.sum(mask) for mask in masks]  # todo :計算每個遮罩的面積
         
-        if FILTER_MODE[self.fliter_mode] == 'IQR':
-            Q1 = np.percentile(mask_areas, 25)
-            Q3 = np.percentile(mask_areas, 75)
-            IQR = Q3 - Q1
-            lower_bound = max(Q1 - self.iqr_factor * IQR, 0)
-            upper_bound = Q3 + self.iqr_factor * IQR
-        
-        elif FILTER_MODE[self.fliter_mode] == 'Median':
+        if FILTER_MODE[self.fliter_mode] == 'Median':
             sorted_mask_areas = sorted(mask_areas)
             median = np.median(sorted_mask_areas)
             lower_bound = median - self.filter_delta
             upper_bound = median + self.filter_delta
             logger.info(f"mask_areas: {sorted_mask_areas}")
-
+            
+        # elif FILTER_MODE[self.fliter_mode] == 'IQR':
+        #     Q1 = np.percentile(mask_areas, 25)
+        #     Q3 = np.percentile(mask_areas, 75)
+        #     IQR = Q3 - Q1
+        #     lower_bound = max(Q1 - self.iqr_factor * IQR, 0)
+        #     upper_bound = Q3 + self.iqr_factor * IQR
+            
         filtered_masks_with_areas = [
             (mask, area) for mask, area in zip(masks, mask_areas)
             if lower_bound <= area <= upper_bound

@@ -44,7 +44,6 @@ from .ai.eSam.esam_everything import GRID_SIZE
 from PyQt5.QtGui import QIntValidator
 from .widgets.parameter_dialog import ParameterDialog
 from . import utils
-from .ai.eSam.esam import MAX_QUERIES_PER_BATCH
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -120,6 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
         self._iseSAMMode = False
+        self._isTopPanel = False #! 區分兩個觸發( tool bar, 左鍵菜單)的 flag 
         
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -430,11 +430,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Start drawing ai_everything. Ctrl+LeftClick ends creation."),
             enabled=False,
         )
-        createAiEverythingMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
-            )
-            if self.canvas.createMode == "ai_everything" 
+        createAiEverythingMode.changed.connect( #! 已修正此錯誤 -> 錯誤 instance 觸發目標
+            lambda: self.directChange2Everything(None)
+            if self.canvas.createMode == "ai_everything"  and  not self._isTopPanel
             else None
         )        
         editMode = action(
@@ -888,18 +886,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._config["ai"]["default"],
             )
             model_index = 0
+            
         # for i in range(0,self._selectAiModelComboBox.count()) :
         #     self._selectAiModelComboBox.setCurrentIndex(model_index)
-        
-        self._selectAiModelComboBox.currentIndexChanged.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText(),
-            )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
-            else None
-        )
-        self._selectAiModelComboBox.setEnabled(False) #? Test
-        
+        # self._selectAiModelComboBox.currentIndexChanged.connect(
+        #     lambda: self.canvas.initializeAiModel(
+        #         name=self._selectAiModelComboBox.currentText(),
+        #     )
+        #     if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
+        #     else None
+        # )
+        self._selectAiModelComboBox.setEnabled(False) 
         
         
         ''' selectRunMode UI '''
@@ -1071,26 +1068,30 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.exec_()
         
     def setEverythingGridInputVal(self,value):
-        
         self._setEverythingGridInput.setValue(int(value))
         self.canvas.setEverythingGrid(int(value))
-        # if self.canvas._ai_everything is not None :
-        #     self.canvas.setEverythingGrid(int(value))
-        # else:
-        #     self.canvas._ai_grid = int(value)
-
 
     def inferenceDevChange(self, index):  #! added by Alvin
-        if self.canvas._ai_everything == None :
-                self.canvas._ai_everything_initDev = index          
+        """
+        Change the inference device based on the selected index.
+        If no AI model is initialized yet, store the device index for future use.
+        """
+        if self.canvas._ai_everything is None:
+            if self.canvas._ai_model is None:
+                self.canvas._ai_everything_initDev = index
+            else:
+                self.canvas._ai_model.set_providers(index)
         else:
             self._selectRunModeComboBox.setEnabled(False)
 
+
             
     def toggleSAMeverything(self):#! added by Alvin 
-        self.toggleDrawMode(False, createMode="ai_everything")
-        self.canvas.initializeAiEverything() ## todo : 暫時註解，設計好再拿掉
+        self._isTopPanel = True
         
+        self.toggleDrawMode(False, createMode="ai_everything")
+        self.canvas.freeModelInstance()
+        self.canvas.initializeAiEverything()
         self.changeStateEverythingWidget()
         cuda_num = self.canvas._ai_everything_initDev
         self.canvas.seteSAMEverythingDev(cuda_num)
@@ -1101,20 +1102,25 @@ class MainWindow(QtWidgets.QMainWindow):
             cuda_num if cuda_num is not None else 0 
         )
         self.showMessageBox(
-                "Info", f"Selected Inference Device has been changed to {selected_device} in Everything mode"
+                "Info", f"Inference device switched to \n {selected_device} \n in Everything mode."
         ) 
         self._selectRunModeComboBox.setEnabled(False) 
+        
+        self._isTopPanel = False
         
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))
          
-    def changeAiMode(self): #! added by Alvin
-        logger.info(self.canvas.createMode)
-        
+    def changeAiMode(self): #! added by Alvin        
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
         self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
+    
+    def directChange2Everything(self,model_name):#! added by Alvin  
+        ''' model_name 自行擴充'''
+        self.changeAiMode()
+        self.toggleSAMeverything()
         
     def changeStateEverythingWidget(self): #! added by Alvin
         self._setEverythingGridInput.setEnabled(self._iseSAMMode) 
@@ -1137,7 +1143,7 @@ class MainWindow(QtWidgets.QMainWindow):
             batchForm.batch_size.setValue(self.canvas.getBatchQuery())
             
         batchForm = QDialog(self)
-        batchForm.setWindowTitle("Batch VRAM Split")
+        batchForm.setWindowTitle("VRAM Usage Limit per Batch")
 
         layout = QtWidgets.QFormLayout()
         batchForm.batch_size = QtWidgets.QSpinBox(batchForm)
@@ -1456,7 +1462,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_shape_color(shape)
         if shape.group_id is None:
             item.setText(
-                '{} <font color="#{:02x}{:02x}{:02x}">●</font>'.format(
+                '{} <font color="#{:02x}{:02x}{:02x}">·</font>'.format(
                     html.escape(shape.label), *shape.fill_color.getRgb()[:3]
                 )
             )
@@ -1603,6 +1609,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for x, y in points:
                 shape.addPoint(QtCore.QPointF(x, y))
             shape.close()
+            print("-.-")
 
             default_flags = {}
             if self._config["label_flags"]:

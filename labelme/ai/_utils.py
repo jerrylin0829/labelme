@@ -29,7 +29,7 @@ def set_providers(mode): ## added by Alvin
     if mode == 0:
         logger.info("CPU Mode Selected : CPUExecutionProvider is available and will be used.")
         return ['CPUExecutionProvider']
-    return get_available_providers(abs(mode - 1))
+    return get_available_providers(abs(mode))
 
 def getAiInferenceOption():
     return ort.get_available_providers()

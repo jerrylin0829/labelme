@@ -11,7 +11,6 @@ from skimage.measure import find_contours
 from skimage.measure import label
 from skimage.measure import regionprops
 import torch
-
 import labelme.ai
 import labelme.utils
 from labelme import QT5
@@ -156,7 +155,6 @@ class Canvas(QtWidgets.QWidget):
         if name not in [model.name for model in labelme.ai.MODELS]:
             raise ValueError("Unsupported ai model: %s" % name)
         model = [model for model in labelme.ai.MODELS if model.name == name][0]
-
         if self._ai_model is not None and self._ai_model.name == model.name:
             logger.debug("AI model is already initialized: %r" % model.name)
         else:
@@ -170,6 +168,10 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.set_image(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+    def freeModelInstance(self):
+        if self._ai_model != None and self.createMode not in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
+            logger.warn("eSAM has been released.")
+            self._ai_model.free_resources()
         
     def setEverythingImg(self,img):
          self._ai_everything.setImg(
@@ -177,9 +179,11 @@ class Canvas(QtWidgets.QWidget):
         )  
          
     def initializeAiEverything(self): #!added by alvin
+        if self._ai_model != None :
+            self.freeModelInstance()
         logger.info("initializeAiEverything...")
         if  self._ai_everything == None:
-            model = build_efficient_sam_vits()
+            model = build_efficient_sam_vits(dev=self._ai_everything_initDev)
             self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev)
             logger.warn(self._ai_everything_initDev)
         self._ai_everything.setImg(
@@ -192,7 +196,7 @@ class Canvas(QtWidgets.QWidget):
     def getBatchQuery(self):
         return self._ai_everything.model.getBatchQuery()   
     
-    def runEverything(self,bbox): #!added by alvin (要調整) 
+    def runEverything(self,bbox): #!added by alvin
         masks = self._ai_everything.run_everything(bbox)
         return masks
     
@@ -386,7 +390,7 @@ class Canvas(QtWidgets.QWidget):
             elif self.createMode == "point":
                 self.line.points = [self.current[0]]
                 self.line.point_labels = [1]
-                self.line.close()
+                # self.line.close()
             assert len(self.line.points) == len(self.line.point_labels)
             self.repaint()
             self.current.highlightClear()
@@ -1022,7 +1026,14 @@ class Canvas(QtWidgets.QWidget):
                         points=[QtCore.QPointF(point[0], point[1]) for point in points],
                         point_labels=[1] * len(points),
                     )
+                    print(self.new_shape.points)
+                    # for attr_name in dir(self.current):
+                    #     if not attr_name.startswith('__'):
+                    #         attr_value = getattr(self.current, attr_name)
+                    #         print(f"{attr_name}: {attr_value}")
+                    # print("-" * 40)  # 分隔符
                     self.current.close()
+                    # print("mask")
                     self.shapes.append(self.new_shape)
         
         elif self.createMode == "ai_boundingbox":
@@ -1082,31 +1093,29 @@ class Canvas(QtWidgets.QWidget):
                 x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
                 x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
                 bbox = (x1, y1, x2, y2)
+                
                 masks = self.runEverything(bbox) 
                 
                 for mask in masks:
-                    contours = find_contours(mask, 0.5)
+                    contours = find_contours(mask)
                     for contour in contours:
                         if len(contour) >= 3:  
-                            POLYGON_APPROX_TOLERANCE = 0.04  
-                            polygon = approximate_polygon(
+                            POLYGON_APPROX_TOLERANCE = 0.08
+                            polygon = approximate_polygon( # A method for simplifying polygons
                                 coords=contour,
-                                tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE,
+                                tolerance=np.ptp(contour, axis=0).max() * POLYGON_APPROX_TOLERANCE, # A larger tolerance will produce a more simplified polygon
                             )
                             polygon = polygon[:-1]  
-
                             points = [QtCore.QPointF(point[1], point[0]) for point in polygon]
-
-                            
                             self.new_shape = self.current.copy()
                             self.new_shape.setShapeRefined(
                                 shape_type="polygon",
                                 points=points,
                                 point_labels=[1] * len(points),
-                                mask=None  
+                                mask=None
                             )
+                            self.current.close()
                             self.shapes.append(self.new_shape)
-                    #break
         else:
             self.current.close()
             self.shapes.append(self.current)

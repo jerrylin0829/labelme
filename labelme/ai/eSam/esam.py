@@ -245,7 +245,7 @@ class EfficientSam(nn.Module):
         all_masks = torch.cat(all_masks, dim=1)  
         all_ious = torch.cat(all_ious, dim=1)
         
-    
+        torch.cuda.empty_cache()
         return all_masks, all_ious
 
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:

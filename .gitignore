@@ -11,3 +11,4 @@
 .idea/
 labelme/ai/weights/efficient_sam_vits.pt
 labelme/ai/weights/efficient_sam_vitt.pt
+labelme/ai/weights/sds/efficient_sam_vits.pt

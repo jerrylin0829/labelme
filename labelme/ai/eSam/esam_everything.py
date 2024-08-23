@@ -27,11 +27,23 @@ from segment_anything.utils.amg import (
 )
 from torchvision.ops.boxes import batched_nms, box_area
 
-FILTER_MODE = ['Median']
+FILTER_MODE = ['Median','PERCENT']
 msgBox = MessageBox()
 
 class EfficientSAM_Everything:
-    def __init__(self, model, dev, grid_size=GRID_SIZE, min_region_area=200, nms_thresh=0.5, fliter_mode=0, score=0.9, iou=0.7, iqr_factor=0.7, filter_delta=200, min_filter_area=100):
+    def __init__(
+        self, model, dev, 
+        grid_size = GRID_SIZE, 
+        min_region_area = 200, 
+        nms_thresh = 0.5, 
+        fliter_mode = 0, 
+        score = 0.9, 
+        iou = 0.7, 
+        pctUp = 95,
+        pctLow = 10, 
+        filter_delta = 200, 
+        min_filter_area = 100
+        ):
         if dev != None and torch.cuda.is_available():
             self.device = torch.device(f"cuda:{dev}")
         else:
@@ -40,11 +52,12 @@ class EfficientSAM_Everything:
         self.model = model.to(self.device)
         self.grid_size = grid_size
         self.nms_thresh = nms_thresh
-        self.iqr_factor = iqr_factor
         self.min_region_area = min_region_area
         self.min_filter_area = min_filter_area
         self.score = score
         self.iou_thresh = iou
+        self.pctUp = pctUp
+        self.pctLow = pctLow
         self.filter_delta = filter_delta
         self.fliter_mode = fliter_mode
         self.img = None
@@ -87,9 +100,12 @@ class EfficientSAM_Everything:
         
     def setIOU(self,val):
         self.iou_thresh = val
-            
-    def setIQR(self,iqr):
-        self.iqr_factor = iqr
+        
+    def setPctUp(self, val):
+        self.pctUp = val  
+        
+    def setPctLow(self, val):
+        self.pctLow = val 
         
     def getGridSize(self):
         return self.grid_size
@@ -106,9 +122,6 @@ class EfficientSAM_Everything:
     def getMinFilterArea(self):
         return self.min_filter_area 
     
-    def getIQR(self):
-        return self.iqr_factor
-    
     def getDelta(self):
         return self.filter_delta 
     
@@ -117,7 +130,13 @@ class EfficientSAM_Everything:
     
     def getIOU(self):   
         return self.iou_thresh   
-
+    
+    def getPctUp(self):
+        return self.pctUp
+        
+    def getPctLow(self):
+        return self.pctLow
+    
     def process_small_region(self, rles):
         new_masks = []
         scores = []
@@ -167,20 +186,16 @@ class EfficientSAM_Everything:
     
     def filter_masks_by_area(self, masks):  # ! added by alvin
         mask_areas = [np.sum(mask) for mask in masks]  # todo :計算每個遮罩的面積
-        
+        sorted_mask_areas = sorted(mask_areas)
         if FILTER_MODE[self.fliter_mode] == 'Median':
-            sorted_mask_areas = sorted(mask_areas)
             median = np.median(sorted_mask_areas)
             lower_bound = median - self.filter_delta
             upper_bound = median + self.filter_delta
             logger.info(f"mask_areas: {sorted_mask_areas}")
             
-        # elif FILTER_MODE[self.fliter_mode] == 'IQR':
-        #     Q1 = np.percentile(mask_areas, 25)
-        #     Q3 = np.percentile(mask_areas, 75)
-        #     IQR = Q3 - Q1
-        #     lower_bound = max(Q1 - self.iqr_factor * IQR, 0)
-        #     upper_bound = Q3 + self.iqr_factor * IQR
+        elif FILTER_MODE[self.fliter_mode] == 'PERCENT':
+            lower_bound = np.percentile(mask_areas, self.pctLow)
+            upper_bound = np.percentile(mask_areas, self.pctUp)
             
         filtered_masks_with_areas = [
             (mask, area) for mask, area in zip(masks, mask_areas)
@@ -212,7 +227,7 @@ class EfficientSAM_Everything:
             logger.warning("No masks found after filtering.")
         
         
-        logger.warning(f"Median: {median}")
+        #logger.warning(f"Median: {median}")
         logger.warning(f"origin: { sorted([np.sum(mask) for mask in sorted_mask_areas] )}")
         logger.warning(f"filtered_masks: {sorted([np.sum(mask) for mask in filtered_masks])}")
         logger.warning(f"eliminated_mask: {[np.sum(mask) for mask in eliminated_mask]}")

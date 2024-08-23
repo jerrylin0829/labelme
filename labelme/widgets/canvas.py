@@ -191,10 +191,21 @@ class Canvas(QtWidgets.QWidget):
         self._ai_everything.setImg(
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
-        
+    def setPctLow(self, val):
+        self._ai_everything.setPctLow(val)
+         
+    def setPctUp(self, val):
+        self._ai_everything.setPctUp(val) 
+                
     def setBatchQuery(self,val):
         self._ai_everything.model.setBatchQuery(val)
         
+    def getPctUp(self):
+        return self._ai_everything.getPctLow()
+         
+    def getPctUp(self):
+        return self._ai_everything.getPctUp()  
+              
     def getBatchQuery(self):
         return self._ai_everything.model.getBatchQuery()   
     

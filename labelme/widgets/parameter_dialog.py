@@ -2,10 +2,11 @@ from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QSpinBox, QDialogButtonBox, QDoubleSpinBox, QAbstractSpinBox, QComboBox, QMessageBox
 )
 from ..ai.eSam.esam_everything import FILTER_MODE
+from labelme.logger import logger
 
 class ParameterDialog(QDialog):
-    def __init__(self, esam_instance, parent=None):
-        super().__init__(parent)
+    def __init__(self, esam_instance):
+        super().__init__()
         self.esam_instance = esam_instance  
         self.init_ui()  
 
@@ -19,14 +20,14 @@ class ParameterDialog(QDialog):
         self.nms_thresh.setRange(0, 1.0)
         self.nms_thresh.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
-        # self.score_thresh = QDoubleSpinBox(self)
-        # self.score_thresh.setRange(0, 1.0)
-        # self.score_thresh.setButtonSymbols(QAbstractSpinBox.NoButtons)
-
-        # self.iou_thresh = QDoubleSpinBox(self)
-        # self.iou_thresh.setRange(0, 1.0)
-        # self.iou_thresh.setButtonSymbols(QAbstractSpinBox.NoButtons)
-
+        self.pctu = QSpinBox(self)
+        self.pctu.setRange(0, 100)
+        self.pctu.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        
+        self.pctl = QSpinBox(self)
+        self.pctl.setRange(0, 100)
+        self.pctl.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        
         self.min_filter_area = QSpinBox(self)
         self.min_filter_area.setRange(0, 400)
         self.min_filter_area.setButtonSymbols(QAbstractSpinBox.NoButtons)
@@ -35,20 +36,15 @@ class ParameterDialog(QDialog):
         self.delta.setRange(1, 400)
         self.delta.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
-        # self.IQR = QDoubleSpinBox(self)
-        # self.IQR.setRange(0, 3.0)
-        # self.IQR.setButtonSymbols(QAbstractSpinBox.NoButtons)
-
         self.filter_mode = QComboBox(self)
         self.filter_mode.addItems(FILTER_MODE)
 
         # Add fields to the layout
         layout.addRow('NMS thresh:', self.nms_thresh)
-        # layout.addRow('Score thresh:', self.score_thresh)
-        # layout.addRow('IOU thresh:', self.iou_thresh)
+        layout.addRow('Upper percentile:', self.pctu)
+        layout.addRow('Lower percentile:', self.pctl)
         layout.addRow('Min Filter Area (MFA):', self.min_filter_area)
         layout.addRow('Component delta:', self.delta)
-        # layout.addRow('IQR:', self.IQR)
         layout.addRow('Filter Mode:', self.filter_mode)
 
         # Add buttons (OK, Cancel, Help)
@@ -76,27 +72,27 @@ class ParameterDialog(QDialog):
     def getParameters(self):
         return (
             self.esam_instance.getNMS(),
-            # self.esam_instance.getScore(),
-            # self.esam_instance.getIOU(),
+            self.esam_instance.getPctUp(),
+            self.esam_instance.getPctLow(),
             self.esam_instance.getMinFilterArea(),
             self.esam_instance.getDelta(),
-            # self.esam_instance.getIQR(),
-            self.esam_instance.getFliterMode(),
+            self.esam_instance.getFliterMode()
         )
 
     def setParameters(self):
         self.esam_instance.setNMS(self.nms_thresh.value())
-        # self.esam_instance.setScore(self.score_thresh.value())
-        # self.esam_instance.setIOU(self.iou_thresh.value())
+        self.esam_instance.setPctUp(self.pctu.value()),
+        self.esam_instance.setPctLow(self.pctl.value()),
         self.esam_instance.setMinFilterArea(self.min_filter_area.value())
         self.esam_instance.setDelta(self.delta.value())
-        # self.esam_instance.setIQR(self.IQR.value())
         self.esam_instance.setFliterMode(self.filter_mode.currentIndex())
 
     def load_parameters(self):
-        # nms_thresh, score, iou, min_filter_area, delta, IQR, filter_mode = self.getParameters()
-        nms_thresh, min_filter_area, delta,filter_mode = self.getParameters()
+        nms_thresh, pctu, pctl, min_filter_area, delta, filter_mode = self.getParameters()
+        logger.info(f"- pctu {pctu} pctl {pctl} -")
         self.nms_thresh.setValue(nms_thresh)
+        self.pctu.setValue(pctu)
+        self.pctl.setValue(pctl)
         self.min_filter_area.setValue(min_filter_area if min_filter_area is not None else 0)
         self.delta.setValue(delta)
         self.filter_mode.setCurrentIndex(filter_mode)

@@ -11,8 +11,9 @@ from .esam_decoder import MaskDecoder, PromptEncoder
 from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
 from ...widgets.msg_box import MessageBox
-MAX_QUERIES_PER_BATCH = 50 #! ADDED BY ALVIN
+from ...widgets.qdialog_generator import create_customBox
 
+MAX_QUERIES_PER_BATCH = 50 #! ADDED BY ALVIN
 
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0
@@ -261,9 +262,73 @@ class EfficientSam(nn.Module):
             )
         return (x - self.pixel_mean) / self.pixel_std
 
+def request_checkpoint_path():
+    msg_box = MessageBox()
+    filepthBox = create_customBox(["File path"]) 
+    if filepthBox:
+        try:
+            file_path = filepthBox.get_attribute("File path")
+            return file_path
+        except AttributeError as e:
+            msg_box.showMessageBox(
+                "Error",f"{e}"
+            )
+            logger.fatal(f"Error: {e}")
+            return None
+    else:
+        logger.info("User cancelled the input.")
+        return None
 
+def check_cuda_and_device(dev: int = None):
 
+    msgbox = MessageBox()
+    
+    if not torch.cuda.is_available():
+        msgbox.showMessageBox("Error", "CUDA is not available on this system.")
+        raise RuntimeError("CUDA is not available on this system.")
+    device_count = torch.cuda.device_count()
+    if dev is not None and (not isinstance(dev, int) or dev < 0 or dev >= device_count):
+        msgbox.showMessageBox(
+            "Error", f"Invalid CUDA device index: {dev}. Available devices: {device_count}"
+        )
+        raise ValueError(f"Invalid CUDA device index: {dev}. Available devices: {device_count}")
 
+def load_model_checkpoint(sam: nn.Module, checkpoint: str = None, dev: int = None):
+    msgbox = MessageBox()
+
+    while checkpoint is None or not os.path.exists(checkpoint) or os.path.isdir(checkpoint):
+        if checkpoint and os.path.isdir(checkpoint):
+            msgbox.showMessageBox("Error", f"Provided path is a directory, not a file: {checkpoint}")
+        elif checkpoint is None or not os.path.exists(checkpoint):
+            msgbox.showMessageBox("Error", f"Checkpoint file '{checkpoint}' does not exist." if checkpoint else "No checkpoint file specified.")
+
+        checkpoint = request_checkpoint_path()
+
+        if checkpoint is None:
+            msgbox.showMessageBox("Error", "No valid checkpoint file provided or user cancelled input.")
+            raise FileNotFoundError("No valid checkpoint file provided or user cancelled input.")
+
+    try:
+        map_location = f"cuda:{dev}" if dev is not None else "cuda:0"
+        state_dict = torch.load(checkpoint, map_location=map_location)
+        print(f"Loaded state_dict keys: {list(state_dict.keys())}")  
+    except Exception as e:
+        msgbox.showMessageBox("Error", f"Error loading checkpoint: {e}")
+        raise RuntimeError(f"Error loading checkpoint: {e}")
+
+    if "model" in state_dict:
+        try:
+            sam.load_state_dict(state_dict["model"])
+        except Exception as e:
+            msgbox.showMessageBox("Error", f"Error loading model state_dict: {e}")
+            raise RuntimeError(f"Error loading model state_dict: {e}")
+    else:
+        try:
+            sam.load_state_dict(state_dict)  
+        except Exception as e:
+            msgbox.showMessageBox("Error", f"Error loading state_dict: {e}")
+            raise RuntimeError(f"Error loading state_dict: {e}")
+   
 def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpoint=None):
     img_size = 1024
     encoder_patch_size = 16
@@ -282,11 +347,7 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
     normalization_type = "layer_norm"
     normalize_before_activation = False
 
-    assert activation == "relu" or activation == "gelu"
-    if activation == "relu":
-        activation_fn = nn.ReLU
-    else:
-        activation_fn = nn.GELU
+    activation_fn = nn.GELU if activation == "gelu" else nn.ReLU
 
     image_encoder = ImageEncoderViT(
         img_size=img_size,
@@ -333,56 +394,8 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
         pixel_mean=[0.485, 0.456, 0.406],
         pixel_std=[0.229, 0.224, 0.225],
     )
-    msgbox = MessageBox()
-    
-    if not torch.cuda.is_available():
-        msgbox.showMessageBox(
-            "Error","CUDA is not available on this system."
-        )
-        raise RuntimeError("CUDA is not available on this system.")
-    
-    if dev is not None and (not isinstance(dev, int) or dev < 0 or dev >= torch.cuda.device_count()):
-        msgbox.showMessageBox(
-            "Error",f"Invalid CUDA device index: {dev}. Available devices: {torch.cuda.device_count()}"
-        )
-        raise ValueError(f"Invalid CUDA device index: {dev}. Available devices: {torch.cuda.device_count()}")
-    
-    if checkpoint is not None:
-        if not os.path.exists(checkpoint):
-            msgbox.showMessageBox(
-            "Error",f"Checkpoint file '{checkpoint}' does not exist."
-            )
-            raise FileNotFoundError(f"Checkpoint file '{checkpoint}' does not exist.")
-        try:
-            with open(checkpoint, "rb") as f:
-                if dev is None:
-                    state_dict = torch.load(f, map_location="cuda:0",weights_only=True)
-                else:
-                    state_dict = torch.load(f, map_location=f"cuda:{dev}",weights_only=True)
-                    
-        except Exception as e:
-            msgbox.showMessageBox(
-            "Error",f"Error loading checkpoint: {e}"
-            )
-            raise RuntimeError(f"Error loading checkpoint: {e}")
-        if "model" not in state_dict:
-            msgbox.showMessageBox(
-            "Error",f"The checkpoint does not contain the expected 'model' key."
-            )
-            raise KeyError(f"The checkpoint does not contain the expected 'model' key.")
 
-        try:  
-            sam.load_state_dict(state_dict["model"])
-        except Exception as e:
-            msgbox.showMessageBox(
-            "Error",f"Error loading model state_dict: {e}"
-            )
-            raise RuntimeError(f"Error loading model state_dict: {e}")
-    else:
-        msgbox.showMessageBox(
-        "Error","No checkpoint file specified."
-        )        
-        raise ValueError("No checkpoint file specified.")
+    check_cuda_and_device(dev)
+    load_model_checkpoint(sam, checkpoint, dev)
     torch.cuda.empty_cache()
     return sam
-

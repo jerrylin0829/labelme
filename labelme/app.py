@@ -37,16 +37,14 @@ from labelme.widgets import LabelListWidgetItem
 from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
-
+from labelme.ai.eSam.esam_everything import GRID
 from PyQt5.QtCore import  Qt
 from PyQt5.QtWidgets import QPushButton,QDialog
-from .ai.eSam.esam_everything import GRID_SIZE
 from .widgets.parameter_dialog import ParameterDialog
 from .widgets.msg_box import MessageBox
 from . import utils
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
-
 # TODO(unknown):
 # - Zoom is too "steppy".
 
@@ -74,7 +72,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if config is None:
             config = get_config()
         self._config = config
-
+        self.nms = config.get('nms')
+        self.batch = config.get('batch_size')
+        logger.info(self.nms)
+        logger.info(self.batch)
         # set default shape colors
         Shape.line_color = QtGui.QColor(*self._config["shape"]["line_color"])
         Shape.fill_color = QtGui.QColor(*self._config["shape"]["fill_color"])
@@ -535,12 +536,12 @@ class MainWindow(QtWidgets.QMainWindow):
             icon="help",
             tip=self.tr("Show tutorial page"),
         )
-        batchVramSplit =action(
-            self.tr("&Split Size"),
-            self.batchVramSplit,
-            icon="help",
-            tip=self.tr("Limiting the number of batch processes to save VRAM"),
-        )
+        # batchVramSplit =action(
+        #     self.tr("&Split Size"),
+        #     self.batchVramSplit,
+        #     icon="help",
+        #     tip=self.tr("Limiting the number of batch processes to save VRAM"),
+        # )
         
         zoom = QtWidgets.QWidgetAction(self)
         zoomBoxLayout = QtWidgets.QVBoxLayout()
@@ -801,7 +802,7 @@ class MainWindow(QtWidgets.QMainWindow):
             edit=self.menu(self.tr("&Edit")),
             view=self.menu(self.tr("&View")),
             help=self.menu(self.tr("&Help")),
-            batchVramSplit = self.menu(self.tr("&Batch VRAM split")),
+            #batchVramSplit = self.menu(self.tr("&Batch VRAM split")),
             recentFiles=QtWidgets.QMenu(self.tr("Open &Recent")),
             labelList=labelMenu,
         )
@@ -826,7 +827,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
         )
         utils.addActions(self.menus.help, (help,))
-        utils.addActions(self.menus.batchVramSplit, (batchVramSplit,))
+        #utils.addActions(self.menus.batchVramSplit, (batchVramSplit,))
         utils.addActions(
             self.menus.view,
             (
@@ -988,7 +989,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self._setEverythingGridInput =  QtWidgets.QSpinBox(self)
         self._setEverythingGridInput.setRange(1, 32) # grid size : 1 ~ 1024  
-        self._setEverythingGridInput.setValue(GRID_SIZE) # Initial Display Value
+        self._setEverythingGridInput.setValue(GRID) # Initial Display Value
         self._setEverythingGridInput.textChanged.connect(self.setEverythingGridInputVal)
         setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
         self._setEverythingGridInput.setEnabled(False)
@@ -1113,6 +1114,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.toggleDrawMode(False, createMode="ai_everything")
         self.canvas.freeModelInstance()
+        
+        self.canvas.nms  = self.nms 
+        
+        self.canvas.setBatch(self.batch)
         self.canvas.initializeAiEverything()
         self.changeStateEverythingWidget()
         cuda_num = self.canvas._ai_everything_initDev
@@ -1150,41 +1155,40 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def openEverythingDialog(self): #! added by Alvin
         dialog = ParameterDialog(self.canvas._ai_everything)
-        dialog.load_parameters()
         if dialog.exec_() == QDialog.Accepted:  
             dialog.setParameters() 
             
-    def batchVramSplit(self):  #! added by Alvin
-        if self.canvas._ai_everything is None :
-            self.msgBox.showMessageBox(
-                "Info", f"Please activate Everything mode before making the settings."
-            )
-            return
+    # def batchVramSplit(self):  #! added by Alvin
+    #     if self.canvas._ai_everything is None :
+    #         self.msgBox.showMessageBox(
+    #             "Info", f"Please activate Everything mode before making the settings."
+    #         )
+    #         return
         
-        def load_parameters():
-            batchForm.batch_size.setValue(self.canvas.getBatchQuery())
+        # def load_parameters():
+        #     batchForm.batch_size.setValue(self.canvas.getBatchQuery())
             
-        batchForm = QDialog(self)
-        batchForm.setWindowTitle("VRAM Usage Limit per Batch")
+        # batchForm = QDialog(self)
+        # batchForm.setWindowTitle("VRAM Usage Limit per Batch")
 
-        layout = QtWidgets.QFormLayout()
-        batchForm.batch_size = QtWidgets.QSpinBox(batchForm)
-        batchForm.batch_size.setRange(0, 1024)
-        batchForm.batch_size.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        layout.addRow('Batch size:', batchForm.batch_size)
+        # layout = QtWidgets.QFormLayout()
+        # batchForm.batch_size = QtWidgets.QSpinBox(batchForm)
+        # batchForm.batch_size.setRange(0, 1024)
+        # batchForm.batch_size.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        # layout.addRow('Batch size:', batchForm.batch_size)
 
-        load_parameters() 
+        # load_parameters() 
 
-        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
-        button_box.accepted.connect(batchForm.accept)  
-        button_box.rejected.connect(batchForm.reject) 
-        layout.addWidget(button_box)
+        # button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        # button_box.accepted.connect(batchForm.accept)  
+        # button_box.rejected.connect(batchForm.reject) 
+        # layout.addWidget(button_box)
 
-        batchForm.setLayout(layout)
+        # batchForm.setLayout(layout)
 
-        if batchForm.exec_() == QDialog.Accepted:
-            self.canvas.setBatchQuery(int(batchForm.batch_size.value()))
-            print(f"Batch size selected: {self.canvas.getBatchQuery()}")
+        # if batchForm.exec_() == QDialog.Accepted:
+        #     self.canvas.setBatchQuery(int(batchForm.batch_size.value()))
+        #     print(f"Batch size selected: {self.canvas.getBatchQuery()}")
 
 
     def menu(self, title, actions=None):

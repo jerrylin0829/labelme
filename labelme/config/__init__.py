@@ -53,23 +53,28 @@ def validate_config_item(key, value):
         raise ValueError(
             "Duplicates are detected for config key 'labels': {}".format(value)
         )
+    if key == "nms" and (not isinstance(value, (int, float)) or not 0 <= value <= 1):
+            raise ValueError("nms must be a number between 0 and 1, but got: {}".format(value))
 
+    if key == "batch_size" and (not isinstance(value, int) or value <= 0 or value > 1024):
+            raise ValueError("batch_size must be a positive integer, but got: {}".format(value))
 
 def get_config(config_file_or_yaml=None, config_from_args=None):
-    # 1. default config
+
     config = get_default_config()
 
-    # 2. specified as file or yaml
     if config_file_or_yaml is not None:
         config_from_yaml = yaml.safe_load(config_file_or_yaml)
         if not isinstance(config_from_yaml, dict):
-            with open(config_from_yaml) as f:
-                logger.info("Loading config file from: {}".format(config_from_yaml))
+            with open(config_file_or_yaml) as f:
+                logger.info("Loading config file from: {}".format(config_file_or_yaml))
                 config_from_yaml = yaml.safe_load(f)
         update_dict(config, config_from_yaml, validate_item=validate_config_item)
 
-    # 3. command line argument or specified config file
+    
     if config_from_args is not None:
-        update_dict(config, config_from_args, validate_item=validate_config_item)
+        for key, value in config_from_args.items():
+            if value is not None:  
+                config[key] = value
 
     return config

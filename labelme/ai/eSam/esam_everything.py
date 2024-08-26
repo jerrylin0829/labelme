@@ -16,7 +16,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from .build_esam import build_efficient_sam_vits
-GRID_SIZE = 25
+
 
 from segment_anything.utils.amg import (
     batched_mask_to_box,
@@ -26,16 +26,16 @@ from segment_anything.utils.amg import (
     rle_to_mask,
 )
 from torchvision.ops.boxes import batched_nms, box_area
-
+GRID = 25
 FILTER_MODE = ['Median','PERCENT']
 msgBox = MessageBox()
 
 class EfficientSAM_Everything:
     def __init__(
         self, model, dev, 
-        grid_size = GRID_SIZE, 
+        nms_thresh, 
+        grid_size = GRID, 
         min_region_area = 200, 
-        nms_thresh = 0.5, 
         fliter_mode = 0, 
         score = 0.9, 
         iou = 0.7, 
@@ -103,10 +103,11 @@ class EfficientSAM_Everything:
         
     def setPctUp(self, val):
         self.pctUp = val  
+        logger.info("test")
         
     def setPctLow(self, val):
         self.pctLow = val 
-        
+        logger.info("test")
     def getGridSize(self):
         return self.grid_size
     

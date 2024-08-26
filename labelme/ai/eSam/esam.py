@@ -11,16 +11,19 @@ from .esam_decoder import MaskDecoder, PromptEncoder
 from .esam_encoder import ImageEncoderViT
 from .two_way_transformer import TwoWayAttentionBlock, TwoWayTransformer
 from ...widgets.msg_box import MessageBox
-from ...widgets.qdialog_generator import create_customBox
 
-MAX_QUERIES_PER_BATCH = 50 #! ADDED BY ALVIN
+from ...widgets.qdialog_generator import CustomDialog
+from PyQt5.QtWidgets import QDialog
+from  ...widgets.text_inputQDialog import StringInputDialog
 
+BATCH = None
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0
     image_format: str = "RGB"
 
     def __init__(
         self,
+        batch,
         image_encoder: ImageEncoderViT,
         prompt_encoder: PromptEncoder,
         decoder_max_num_input_points: int,
@@ -45,7 +48,8 @@ class EfficientSam(nn.Module):
         self.prompt_encoder = prompt_encoder
         self.decoder_max_num_input_points = decoder_max_num_input_points
         self.mask_decoder = mask_decoder
-        self.max_queries_per_batch = MAX_QUERIES_PER_BATCH
+        self.batch = batch
+        batch = batch
         self.register_buffer(
             "pixel_mean", torch.Tensor(pixel_mean).view(1, 3, 1, 1), False
         )
@@ -152,10 +156,10 @@ class EfficientSam(nn.Module):
         )
         return output_masks, iou_predictions
     def setBatchQuery(self,val):
-        self.max_queries_per_batch = val
+        self.grid = val
         
     def getBatchQuery(self):
-        return self.max_queries_per_batch   
+        return self.grid   
         
     def get_rescaled_pts(self, batched_points: torch.Tensor, input_h: int, input_w: int):
         return torch.stack(
@@ -195,7 +199,7 @@ class EfficientSam(nn.Module):
         batched_images: torch.Tensor,
         batched_points: torch.Tensor,
         batched_point_labels: torch.Tensor,
-        max_queries_per_batch: int = MAX_QUERIES_PER_BATCH,  #! added by alvin (New para.)
+        max_queries_per_batch = BATCH,  #! added by alvin (New para.)
         scale_to_original_image_size: bool = True,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -214,7 +218,7 @@ class EfficientSam(nn.Module):
             low_res_mask: A tensor of shape [B, 256, 256] of predicted masks
             iou_predictions: A tensor of shape [B, max_num_queries] of estimated IOU scores
         """
-        max_queries_per_batch = self.max_queries_per_batch
+        max_queries_per_batch = self.batch
         
         batch_size, num_queries, max_num_pts, _ = batched_points.shape
         image_embeddings = self.get_image_embeddings(batched_images)
@@ -264,20 +268,21 @@ class EfficientSam(nn.Module):
 
 def request_checkpoint_path():
     msg_box = MessageBox()
-    filepthBox = create_customBox(["File path"]) 
-    if filepthBox:
+    filepthBox = StringInputDialog(title='File path') 
+    result = filepthBox.exec_()
+    
+    if result == QDialog.Accepted:
         try:
-            file_path = filepthBox.get_attribute("File path")
+            file_path = filepthBox.get_user_input()
             return file_path
         except AttributeError as e:
-            msg_box.showMessageBox(
-                "Error",f"{e}"
-            )
+            msg_box.showMessageBox("Error", f"Error retrieving file path: {e}")
             logger.fatal(f"Error: {e}")
             return None
     else:
         logger.info("User cancelled the input.")
         return None
+
 
 def check_cuda_and_device(dev: int = None):
 
@@ -329,7 +334,7 @@ def load_model_checkpoint(sam: nn.Module, checkpoint: str = None, dev: int = Non
             msgbox.showMessageBox("Error", f"Error loading state_dict: {e}")
             raise RuntimeError(f"Error loading state_dict: {e}")
    
-def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpoint=None):
+def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, batch, checkpoint=None):
     img_size = 1024
     encoder_patch_size = 16
     encoder_depth = 12
@@ -366,6 +371,7 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, checkpo
     encoder_transformer_output_dim = image_encoder.transformer_output_dim
 
     sam = EfficientSam(
+        batch=batch,
         image_encoder=image_encoder,
         prompt_encoder=PromptEncoder(
             embed_dim=encoder_transformer_output_dim,

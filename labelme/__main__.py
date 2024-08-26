@@ -107,6 +107,20 @@ def main():
         help="epsilon to find nearest vertex on canvas",
         default=argparse.SUPPRESS,
     )
+    # parser.add_argument(
+    #     "--nms",
+    #     type=float,
+    #     help="set the NMS (Non-Maximum Suppression) threshold (0 to 1)",
+    #     default=0.5  
+    # )
+
+    # parser.add_argument(
+    #     "--batch-size",
+    #     type=int,
+    #     help="set the batch size for processing",
+    #     default=50 
+    # )
+    
     args = parser.parse_args()
 
     if args.version:

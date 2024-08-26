@@ -112,6 +112,8 @@ class Canvas(QtWidgets.QWidget):
         self.hShapeIsSelected = False
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
+        self.nms = None
+        self.batch = None
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -123,11 +125,13 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model = None
         self._ai_everything = None #! added by alvin - for eSAM everything 
         self._ai_everything_initDev = 0 if torch.cuda.is_available() else None #! added by alvin - for eSAM everything init
-        self._ai_grid = 0
         
     def fillDrawing(self):
         return self._fill_drawing
-
+    
+    def setBatch (self,val):
+        self.batch = val
+        
     def setFillDrawing(self, value):
         self._fill_drawing = value
 
@@ -183,10 +187,12 @@ class Canvas(QtWidgets.QWidget):
     def initializeAiEverything(self): #!added by alvin
         if self._ai_model != None :
             self.freeModelInstance()
+            
         logger.info("initializeAiEverything...")
         if  self._ai_everything == None:
-            model = build_efficient_sam_vits(dev=self._ai_everything_initDev)
-            self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev)
+            model = build_efficient_sam_vits(batch=self.batch,dev=self._ai_everything_initDev)
+            logger.info(self.nms)
+            self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev,grid_size=self.batch,nms_thresh=self.nms)
             logger.warn(self._ai_everything_initDev)
         self._ai_everything.setImg(
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
@@ -858,11 +864,14 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.paint(p)
             
         elif self.createMode == "ai_polygon" and self.current is not None:
+            if self._ai_model == None :
+                self.initializeAiModel()
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
                 label=self.line.point_labels[1],
             )
+
             points = self._ai_model.predict_polygon_from_points(
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
@@ -878,6 +887,8 @@ class Canvas(QtWidgets.QWidget):
                 drawing_shape.paint(p)
             
         elif self.createMode == "ai_mask" and self.current is not None:
+            if self._ai_model == None :
+                self.initializeAiModel()
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
@@ -916,6 +927,8 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.paint(p)
         
         elif self.createMode == "ai_boundingbox" and self.current is not None:
+            if self._ai_model == None :
+                self.initializeAiModel()
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
@@ -1003,6 +1016,9 @@ class Canvas(QtWidgets.QWidget):
                           
         if self.createMode == "ai_polygon":
             # convert points to polygon by an AI model
+            if self._ai_model == None :
+                self.initializeAiModel()
+                
             assert self.current.shape_type == "points"
             points = self._ai_model.predict_polygon_from_points(
                 points=[[point.x(), point.y()] for point in self.current.points],
@@ -1017,6 +1033,8 @@ class Canvas(QtWidgets.QWidget):
             self.shapes.append(self.current)
             
         elif self.createMode == "ai_mask":
+            if self._ai_model == None :
+                self.initializeAiModel()
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
             mask = self._ai_model.predict_mask_from_points(
@@ -1038,6 +1056,8 @@ class Canvas(QtWidgets.QWidget):
                     self.shapes.append(self.new_shape)
         
         elif self.createMode == "ai_boundingbox":
+            if self._ai_model == None :
+                self.initializeAiModel()
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
             mask = self._ai_model.predict_mask_from_points(

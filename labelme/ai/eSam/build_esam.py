@@ -6,17 +6,19 @@
 
 from .esam import build_efficient_sam
 
-def build_efficient_sam_vitt(dev=None):
+def build_efficient_sam_vitt(batch,dev=None):
     return build_efficient_sam(
-        dev,
+        batch = batch,
+        dev=dev,
         encoder_patch_embed_dim=192,
         encoder_num_heads=3,
         checkpoint="labelme/ai/weights/efficient_sam_vitt.pt",
     ).eval()
 
 
-def build_efficient_sam_vits(dev=None):
+def build_efficient_sam_vits(batch,dev=None):
     return build_efficient_sam(
+        batch = batch,
         encoder_patch_embed_dim=384,
         encoder_num_heads=6,
         dev=dev,

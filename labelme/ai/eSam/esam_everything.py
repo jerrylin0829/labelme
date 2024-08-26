@@ -31,6 +31,8 @@ FILTER_MODE = ['Median','PERCENT']
 msgBox = MessageBox()
 
 class EfficientSAM_Everything:
+    name = "EfficientSAM_Everything"
+    
     def __init__(
         self, model, dev, 
         nms_thresh, 
@@ -70,8 +72,8 @@ class EfficientSAM_Everything:
         if self.thread is not None:
             self.thread.join()
 
-    def setImg(self, img):
-        self.img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    def setImg(self, image):
+        self.img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
     def setInferenceDev(self, num):
         self.device = torch.device(

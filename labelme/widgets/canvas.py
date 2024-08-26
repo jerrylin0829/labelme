@@ -23,6 +23,7 @@ from ..ai._utils import compute_multipolygon_from_mask
 from ..ai.eSam.esam_everything import EfficientSAM_Everything
 from ..ai.eSam.build_esam import build_efficient_sam_vits
 from .msg_box import MessageBox
+from ..ai.ai_model_manager import AIModelManager
 import gc
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
@@ -79,6 +80,8 @@ class Canvas(QtWidgets.QWidget):
         )
         super(Canvas, self).__init__(*args, **kwargs)
         # Initialise local state.
+        self.ai_manager = AIModelManager()
+        
         self.mode = self.EDIT
         self.shapes = []
         self.shapes_num = None
@@ -171,7 +174,7 @@ class Canvas(QtWidgets.QWidget):
             logger.warning("Pixmap is not set yet")
             return
 
-        self._ai_model.set_image(
+        self._ai_model.setImg(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
     def freeModelInstance(self):
@@ -179,9 +182,9 @@ class Canvas(QtWidgets.QWidget):
             logger.warn("eSAM has been released.")
             self._ai_model.free_resources()
         
-    def setEverythingImg(self,img):
+    def setEverythingImg(self,image):
          self._ai_everything.setImg(
-            labelme.utils.img_qt_to_arr(img)
+            labelme.utils.img_qt_to_arr(image)
         )  
          
     def initializeAiEverything(self): #!added by alvin
@@ -1383,7 +1386,7 @@ class Canvas(QtWidgets.QWidget):
     def loadPixmap(self, pixmap, clear_shapes=True):
         self.pixmap = pixmap
         if self._ai_model:
-            self._ai_model.set_image(
+            self._ai_model.setImg(
                 image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )
         if clear_shapes:

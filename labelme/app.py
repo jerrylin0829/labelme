@@ -51,6 +51,7 @@ from . import utils
 
 LABEL_COLORMAP = imgviz.label_colormap()
 
+WINDOW_COUNT = 0
 
 class MainWindow(QtWidgets.QMainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
@@ -1128,13 +1129,14 @@ class MainWindow(QtWidgets.QMainWindow):
         selected_device = self._selectRunModeComboBox.itemText(
             cuda_num if cuda_num is not None else 0 
         )
-        self.msgBox.showMessageBox(
-                "Info", f"Inference device switched to \n {selected_device} \n in Everything mode."
-        ) 
+        if WINDOW_COUNT == 0 :
+            self.msgBox.showMessageBox(
+                    "Info", f"Inference device switched to \n {selected_device} \n in Everything mode."
+            ) 
         self._selectRunModeComboBox.setEnabled(False) 
         
         self._isTopPanel = False
-        
+        WINDOW_COUNT+=1
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))
          

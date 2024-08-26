@@ -121,3 +121,5 @@ def compute_multipolygon_from_mask(mask):
         imgviz.io.imsave("contour.jpg", np.asarray(image_pil))
 
     return polygons
+
+ 

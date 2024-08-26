@@ -1,7 +1,7 @@
 import gdown
 from .efficient_sam import EfficientSam
 from .segment_anything_model import SegmentAnythingModel
-
+from .eSam.esam_everything import EfficientSAM_Everything
 
 class SegmentAnythingModelVitB(SegmentAnythingModel):
     name = "SegmentAnything (speed)"
@@ -90,8 +90,10 @@ MODELS = [ ## former model appended list
     EfficientSamVitT,
     EfficientSamVitS,
 ]
-MODEL_DEFAULT = [ ## added by Alvin
-    EfficientSamVitS
+
+MODELS_ENABLE = [ ## added by Alvin
+    EfficientSamVitS,
+    EfficientSAM_Everything
 ]
 
 '''

@@ -34,7 +34,7 @@ class EfficientSam:
         
         logger.info("Mode is modified")
 
-    def set_image(self, image: np.ndarray):
+    def setImg(self, image: np.ndarray):
         with self._lock:
             self._image = image
             self._image_embedding = self._image_embedding_cache.get(self._image.tobytes())

@@ -1,6 +1,3 @@
-from PyQt5.QtWidgets import (
-    QDialog, QFormLayout, QSpinBox, QDialogButtonBox, QDoubleSpinBox, QAbstractSpinBox, QComboBox, QMessageBox
-)
 from labelme.logger import logger
 from .qdialog_generator import CustomDialog
 

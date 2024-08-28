@@ -23,6 +23,7 @@ from ..ai._utils import compute_multipolygon_from_mask
 from ..ai.eSam.esam_everything import EfficientSAM_Everything
 from ..ai.eSam.build_esam import build_efficient_sam_vits
 from .msg_box import MessageBox
+
 from ..ai.ai_model_manager import AIModelManager
 import gc
 # TODO(unknown):
@@ -867,8 +868,9 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.paint(p)
             
         elif self.createMode == "ai_polygon" and self.current is not None:
-            if self._ai_model == None :
-                self.initializeAiModel()
+            if self.ai_manager.is_model_available("EfficientSam (accuracy)") is False :
+                self.ai_manager.initialize_model("EfficientSam (accuracy)",img = labelme.utils.img_qt_to_arr(self.pixmap.toImage()))
+                
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],

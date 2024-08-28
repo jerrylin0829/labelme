@@ -63,14 +63,14 @@ class CustomDialog(QDialog):
             widget = QSpinBox()
             widget.setMinimum(config.get('range', [0, 100])[0])
             widget.setMaximum(config.get('range', [0, 100])[1])
-            widget.setValue(config.get('default', 0) or 0)  # 防止 None 值
+            widget.setValue(config.get('default', 0) or 0)  
             return widget
         elif widget_type == 'QDoubleSpinBox':
             widget = QDoubleSpinBox()
             widget.setDecimals(2)
             widget.setMinimum(config.get('range', [0.0, 1.0])[0])
             widget.setMaximum(config.get('range', [0.0, 1.0])[1])
-            widget.setValue(config.get('default', 0.0) or 0.0)  # 防止 None 值
+            widget.setValue(config.get('default', 0.0) or 0.0)  
             return widget
         return None
 

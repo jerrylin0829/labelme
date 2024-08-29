@@ -159,7 +159,24 @@ class Canvas(QtWidgets.QWidget):
         ]:
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
-
+    def initAimodel(self,model_name,**kwargs):
+        #? **kwargs :最少需要有 img 的輸入
+        if self.ai_manager.is_model_available(model_name) == False:
+            logger.debug(f"Try to initialize {model_name}...")
+            res = self.ai_manager.initialize_model(model_name,**kwargs)
+            if res == None : 
+                raise ValueError(f"Model {model_name} Initialization Failure")
+            
+    def switchAiModel(self,model_name):
+        if self.pixmap is None:
+            logger.warning("Pixmap is not set yet")
+            return
+        
+        self._ai_model = self.ai_manager.get_current_model(
+                model_name,
+                img = labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+            )
+        
     def initializeAiModel(self, name ):
         logger.info("initializeAiModel")
         if name not in [model.name for model in labelme.ai.MODELS]:
@@ -178,29 +195,15 @@ class Canvas(QtWidgets.QWidget):
         self._ai_model.setImg(
             image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
         )
+        
     def freeModelInstance(self):
         if self._ai_model != None and self.createMode not in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
             logger.warn("eSAM has been released.")
             self._ai_model.free_resources()
         
-    def setEverythingImg(self,image):
-         self._ai_everything.setImg(
-            labelme.utils.img_qt_to_arr(image)
-        )  
+    def setAiImg(self,img):
+        self.ai_manager.set_model_img(img)
          
-    def initializeAiEverything(self): #!added by alvin
-        if self._ai_model != None :
-            self.freeModelInstance()
-            
-        logger.info("initializeAiEverything...")
-        if  self._ai_everything == None:
-            model = build_efficient_sam_vits(batch=self.batch,dev=self._ai_everything_initDev)
-            logger.info(self.nms)
-            self._ai_everything = EfficientSAM_Everything(model,self._ai_everything_initDev,grid_size=self.batch,nms_thresh=self.nms)
-            logger.warn(self._ai_everything_initDev)
-        self._ai_everything.setImg(
-            labelme.utils.img_qt_to_arr(self.pixmap.toImage())
-        )
     def setPctLow(self, val):
         self._ai_everything.setPctLow(val)
          
@@ -807,6 +810,13 @@ class Canvas(QtWidgets.QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
         
+        if self.createMode in ["ai_polygon","ai_mask","ai_boundingbox"] :
+            if self.ai_manager.is_model_available("EfficientSam (accuracy)") == False :
+                self.initAimodel(
+                    "EfficientSam (accuracy)",
+                    img =labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+                    )
+
         p = self._painter
         p.begin(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -868,19 +878,17 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.paint(p)
             
         elif self.createMode == "ai_polygon" and self.current is not None:
-            if self.ai_manager.is_model_available("EfficientSam (accuracy)") is False :
-                self.ai_manager.initialize_model("EfficientSam (accuracy)",img = labelme.utils.img_qt_to_arr(self.pixmap.toImage()))
                 
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
                 label=self.line.point_labels[1],
             )
-
-            points = self._ai_model.predict_polygon_from_points(
+            points = self.ai_manager._run_model(
+                ai_type = "ai_polygon",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
-            )
+            )  
             if len(points) > 2:
                 drawing_shape.setShapeRefined(
                     shape_type="polygon",
@@ -892,18 +900,17 @@ class Canvas(QtWidgets.QWidget):
                 drawing_shape.paint(p)
             
         elif self.createMode == "ai_mask" and self.current is not None:
-            if self._ai_model == None :
-                self.initializeAiModel()
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
                 label=self.line.point_labels[1],
             )
-            mask = self._ai_model.predict_mask_from_points(
+            mask = self.ai_manager._run_model(
+                ai_type = "ai_mask",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
             )
-
+            
             # Compute polygons from the mask
             polygons = compute_multipolygon_from_mask(mask)
 
@@ -932,18 +939,16 @@ class Canvas(QtWidgets.QWidget):
             drawing_shape.paint(p)
         
         elif self.createMode == "ai_boundingbox" and self.current is not None:
-            if self._ai_model == None :
-                self.initializeAiModel()
             drawing_shape = self.current.copy()
             drawing_shape.addPoint(
                 point=self.line.points[1],
                 label=self.line.point_labels[1],
             )
-            mask = self._ai_model.predict_mask_from_points(
+            mask = self.ai_manager._run_model(
+                ai_type = "ai_boundingbox",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
             )
-
             # Compute bounding boxes for each object in the mask
             bounding_boxes = imgviz.instances.masks_to_bboxes([mask])
 
@@ -1004,7 +1009,10 @@ class Canvas(QtWidgets.QWidget):
 
         try:
             self.setEverythingGrid(int(self.getEverythingGrid() / 2))
-            masks = self.runEverything(bbox)
+            masks = self.ai_manager._run_model(
+                model_name = "EfficientSAM_Everything",
+                bbox = bbox
+                )
         except Exception as e:
             self.msgBox.showMessageBox(
                 "Fatal", f"Model Reconstruction Failure: {e}"
@@ -1021,14 +1029,13 @@ class Canvas(QtWidgets.QWidget):
                           
         if self.createMode == "ai_polygon":
             # convert points to polygon by an AI model
-            if self._ai_model == None :
-                self.initializeAiModel()
-                
             assert self.current.shape_type == "points"
-            points = self._ai_model.predict_polygon_from_points(
+            points = self.ai_manager._run_model(
+                ai_type = "ai_polygon",
                 points=[[point.x(), point.y()] for point in self.current.points],
-                point_labels=self.current.point_labels,
+                point_labels=self.current.point_labels                                      
             )
+            
             self.current.setShapeRefined(
                 points=[QtCore.QPointF(point[0], point[1]) for point in points],
                 point_labels=[1] * len(points),
@@ -1038,14 +1045,14 @@ class Canvas(QtWidgets.QWidget):
             self.shapes.append(self.current)
             
         elif self.createMode == "ai_mask":
-            if self._ai_model == None :
-                self.initializeAiModel()
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
-            mask = self._ai_model.predict_mask_from_points(
+            
+            masks = self.ai_manager._run_model(
+                ai_type = "ai_mask",
                 points=[[point.x(), point.y()] for point in self.current.points],
-                point_labels=self.current.point_labels,
-            )
+                point_labels=self.current.point_labels                                      
+                )
             
             polygons = compute_multipolygon_from_mask(mask)
             for points in polygons:
@@ -1061,15 +1068,15 @@ class Canvas(QtWidgets.QWidget):
                     self.shapes.append(self.new_shape)
         
         elif self.createMode == "ai_boundingbox":
-            if self._ai_model == None :
-                self.initializeAiModel()
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
-            mask = self._ai_model.predict_mask_from_points(
-                points=[[point.x(), point.y()] for point in self.current.points],
-                point_labels=self.current.point_labels,
-            )
             
+            masks = self.ai_manager._run_model(
+                ai_type = "ai_boundingbox",
+                points=[[point.x(), point.y()] for point in self.current.points],
+                point_labels=self.current.point_labels                                      
+            )     
+                   
             # Detect connected components
             '''explain the label function'''
             '''
@@ -1122,7 +1129,11 @@ class Canvas(QtWidgets.QWidget):
                 bbox = (x1, y1, x2, y2)
                 
                 try :
-                    masks = self.runEverything(bbox) 
+                    #masks = self.runEverything(bbox) 
+                    masks = self.ai_manager._run_model(
+                        model_name = "EfficientSAM_Everything",
+                        bbox = bbox
+                        )
                     
                 except RuntimeError as e:
                     if "out of memory" in str(e).lower():
@@ -1138,6 +1149,8 @@ class Canvas(QtWidgets.QWidget):
                             "Warning","Try to reloading model."
                         )
                         try:
+                            #todo: 需要修正以 ai mangent refactor
+                            
                             self._ai_everything = None
                             self._ai_everything = self.initializeAiEverything()  # 問題點
                             

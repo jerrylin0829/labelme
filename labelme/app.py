@@ -1119,7 +1119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.nms  = self.nms 
         
         self.canvas.setBatch(self.batch)
-        self.canvas.initializeAiEverything()
+        self.canvas.initAimodel("EfficientSAM_Everything",)
         self.changeStateEverythingWidget()
         cuda_num = self.canvas._ai_everything_initDev
         self.canvas.seteSAMEverythingDev(cuda_num)
@@ -2019,7 +2019,8 @@ class MainWindow(QtWidgets.QMainWindow):
             dialog.onNewValue(None)
         
         if self.canvas.createMode == "ai_everything" :
-            self.canvas.setEverythingImg(QtGui.QImage.fromData(self.imageData))
+            self.canvas.ai_manager.update_default_img(QtGui.QImage.fromData(self.imageData))
+            #self.canvas.setAiImg(QtGui.QImage.fromData(self.imageData))
             logger.warn("img load into everything.")  
                      
         self.paintCanvas()

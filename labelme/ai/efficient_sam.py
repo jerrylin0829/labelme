@@ -30,7 +30,6 @@ class EfficientSam(BaseModel):
         self._encoder_session = ort.InferenceSession(self._encoder_path, providers=self._providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path, providers=self._providers)
         
-        
 
     def setImg(self, image: np.ndarray):
         

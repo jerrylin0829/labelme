@@ -25,6 +25,7 @@ class AIModelManager:
         Returns:
             object: The initialized model instance, or None if initialization fails.
         """
+        #! Prevents multiple models from existing at the same time and blowing up the VRAM.
         conflicting_model_name = self._oom_avoid(model_name)
         if conflicting_model_name:
             self.release_model(conflicting_model_name)

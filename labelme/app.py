@@ -1986,10 +1986,14 @@ class MainWindow(QtWidgets.QMainWindow):
             dialog.onNewValue(None)
         
         if self.canvas.createMode == "ai_everything" :
-            self.canvas.ai_manager.update_default_img(QtGui.QImage.fromData(self.imageData))
-            #self.canvas.setAiImg(QtGui.QImage.fromData(self.imageData))
+            self.canvas.ai_manager.update_default_img(
+                utils.img_qt_to_arr(QtGui.QImage.fromData(self.imageData))
+                )
             logger.warn("img load into everything.")  
-                     
+        self.canvas.ai_manager.update_default_img(
+                utils.img_qt_to_arr(QtGui.QImage.fromData(self.imageData))
+                )
+        logger.warn("img load into everything.")  
         self.paintCanvas()
         self.addRecentFile(self.filename)
         self.toggleActions(True)

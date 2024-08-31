@@ -1345,7 +1345,6 @@ class Canvas(QtWidgets.QWidget):
 
     def loadPixmap(self, pixmap, clear_shapes=True):
         self.pixmap = pixmap
-        logger.info("hjkl;tgyhjukl;")
         self.ai_manager.update_default_img(
             labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )

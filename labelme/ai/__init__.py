@@ -89,6 +89,7 @@ MODELS = [ ## former model appended list
     SegmentAnythingModelVitH,
     EfficientSamVitT,
     EfficientSamVitS,
+    EfficientSAM_Everything
 ]
 
 MODELS_ENABLE = [ ## added by Alvin

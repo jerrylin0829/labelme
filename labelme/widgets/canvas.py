@@ -20,11 +20,11 @@ from labelme.shape import Shape
 
 from ..ai._utils import compute_multipolygon_from_mask
 ## for EfficientSAM_Everything
-from ..ai.eSam.esam_everything import EfficientSAM_Everything
-from ..ai.eSam.build_esam import build_efficient_sam_vits
+#from ..ai.eSam.esam_everything import EfficientSAM_Everything
+#from ..ai.eSam.build_esam import build_efficient_sam_vits
 from .msg_box import MessageBox
 
-from ..ai.ai_model_manager import AIModelManager
+
 import gc
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
@@ -81,6 +81,7 @@ class Canvas(QtWidgets.QWidget):
         )
         super(Canvas, self).__init__(*args, **kwargs)
         # Initialise local state.
+        from ..ai.ai_model_manager import AIModelManager
         self.ai_manager = AIModelManager()
         
         self.mode = self.EDIT
@@ -116,7 +117,6 @@ class Canvas(QtWidgets.QWidget):
         self.hShapeIsSelected = False
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
-        self.nms = None
         self.batch = None
         # Menus:
         # 0: right-click without selection and dragging of shapes
@@ -171,35 +171,11 @@ class Canvas(QtWidgets.QWidget):
         if self.pixmap is None:
             logger.warning("Pixmap is not set yet")
             return
-        
+        logger.info("=====================")
         self._ai_model = self.ai_manager.get_current_model(
                 model_name,
                 img = labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )
-        
-    def initializeAiModel(self, name ):
-        logger.info("initializeAiModel")
-        if name not in [model.name for model in labelme.ai.MODELS]:
-            raise ValueError("Unsupported ai model: %s" % name)
-        model = [model for model in labelme.ai.MODELS if model.name == name][0]
-        if self._ai_model is not None and self._ai_model.name == model.name:
-            logger.debug("AI model is already initialized: %r" % model.name)
-        else:
-            logger.debug("Initializing AI model: %r" % model.name)
-            self._ai_model = model()
-
-        if self.pixmap is None:
-            logger.warning("Pixmap is not set yet")
-            return
-
-        self._ai_model.setImg(
-            image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
-        )
-        
-    def freeModelInstance(self):
-        if self._ai_model != None and self.createMode not in ["ai_polygon", "ai_mask", "ai_boundingbox"]:
-            logger.warn("eSAM has been released.")
-            self._ai_model.free_resources()
         
     def setAiImg(self,img):
         self.ai_manager.set_model_img(img)
@@ -811,6 +787,7 @@ class Canvas(QtWidgets.QWidget):
             return super(Canvas, self).paintEvent(event)
         
         if self.createMode in ["ai_polygon","ai_mask","ai_boundingbox"] :
+            logger.info(f"{self.createMode}")
             if self.ai_manager.is_model_available("EfficientSam (accuracy)") == False :
                 self.initAimodel(
                     "EfficientSam (accuracy)",
@@ -885,6 +862,7 @@ class Canvas(QtWidgets.QWidget):
                 label=self.line.point_labels[1],
             )
             points = self.ai_manager._run_model(
+                model_name="EfficientSam (accuracy)",
                 ai_type = "ai_polygon",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
@@ -906,6 +884,7 @@ class Canvas(QtWidgets.QWidget):
                 label=self.line.point_labels[1],
             )
             mask = self.ai_manager._run_model(
+                model_name="EfficientSam (accuracy)",
                 ai_type = "ai_mask",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
@@ -945,6 +924,7 @@ class Canvas(QtWidgets.QWidget):
                 label=self.line.point_labels[1],
             )
             mask = self.ai_manager._run_model(
+                model_name="EfficientSam (accuracy)",
                 ai_type = "ai_boundingbox",
                 points=[[point.x(), point.y()] for point in drawing_shape.points],
                 point_labels=drawing_shape.point_labels,
@@ -1021,7 +1001,8 @@ class Canvas(QtWidgets.QWidget):
             return self.try2RecoverEverything(bbox, retry_count + 1, max_retries)
         
         return masks
-           
+    
+            
     def finalise(self):
         assert self.current
 
@@ -1031,6 +1012,7 @@ class Canvas(QtWidgets.QWidget):
             # convert points to polygon by an AI model
             assert self.current.shape_type == "points"
             points = self.ai_manager._run_model(
+                model_name = "EfficientSam (accuracy)",
                 ai_type = "ai_polygon",
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels                                      
@@ -1049,12 +1031,13 @@ class Canvas(QtWidgets.QWidget):
             assert self.current.shape_type == "points"
             
             masks = self.ai_manager._run_model(
+                model_name = "EfficientSam (accuracy)",
                 ai_type = "ai_mask",
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels                                      
                 )
             
-            polygons = compute_multipolygon_from_mask(mask)
+            polygons = compute_multipolygon_from_mask(masks)
             for points in polygons:
                 if len(points) >= 2:  # Valid polygon should have at least 2 points
                     # Create a new shape for each connected component
@@ -1070,8 +1053,8 @@ class Canvas(QtWidgets.QWidget):
         elif self.createMode == "ai_boundingbox":
             # convert points to mask by an AI model
             assert self.current.shape_type == "points"
-            
             masks = self.ai_manager._run_model(
+                model_name = "EfficientSam (accuracy)",
                 ai_type = "ai_boundingbox",
                 points=[[point.x(), point.y()] for point in self.current.points],
                 point_labels=self.current.point_labels                                      
@@ -1095,7 +1078,7 @@ class Canvas(QtWidgets.QWidget):
              [2 2 0 0 0]
              [2 2 0 3 3]]
             '''
-            labeled_mask = label(mask)
+            labeled_mask = label(masks)
 
             # this function can calculate the bounding box, area, and perimeter of the region
             regions = regionprops(labeled_mask)
@@ -1122,66 +1105,28 @@ class Canvas(QtWidgets.QWidget):
                 self.shapes.append(self.new_shape)
                 
         #! for eSAM everything 
-        
         elif self.createMode == "ai_everything":
                 x1, y1 = int(self.current.points[0].x()), int(self.current.points[0].y())
                 x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
                 bbox = (x1, y1, x2, y2)
                 
                 try :
-                    #masks = self.runEverything(bbox) 
                     masks = self.ai_manager._run_model(
                         model_name = "EfficientSAM_Everything",
-                        bbox = bbox
-                        )
-                    
-                except RuntimeError as e:
-                    if "out of memory" in str(e).lower():
-                        logger.fatal(f"{e}")
-                        del self._ai_everything
-                        torch.cuda.empty_cache()
-                        gc.collect() 
-                        self.msgBox.showMessageBox(
-                            "Fatal","Model and cache cleared after OOM."
-                        )
-            
-                        self.msgBox.showMessageBox(
-                            "Warning","Try to reloading model."
-                        )
-                        try:
-                            #todo: 需要修正以 ai mangent refactor
-                            
-                            self._ai_everything = None
-                            self._ai_everything = self.initializeAiEverything()  # 問題點
-                            
-                            self.msgBox.showMessageBox(
-                                "Info","Rebuilding the model after OOM."
-                            )
-                            if self._ai_everything is None:
-                                self.msgBox.showMessageBox(
-                                    "Fatal",f"Failed to rebuild model: {e}"
-                                )                                
-                                raise RuntimeError("Failed to reinitialise the AI Everything model.")
-                            
-                            masks = self.try2RecoverEverything(bbox)
-                            
-                        except Exception as e:
-                            self.msgBox.showMessageBox(
-                                "Fatal","Model and cache cleared after OOM."
-                            )
-                            logger.fatal(traceback.format_exc()) 
-                            return  None
-                    else:
-                        self.msgBox.showMessageBox(
-                            "Fatal",f"Runtime error: {e}"
-                        )
-                        logger.fatal(f"Runtime error: {e}")
-                        raise  
-                except Exception as e:
-                    self.msgBox.showMessageBox(
-                        "Fatal",f"Runtime error: {e}"
+                        ai_type = "ai_everything",
+                        bbox = bbox,
                     )
-                    raise
+                except RuntimeError as e:
+                        if "out of memory" in str(e).lower():
+                            self.ai_manager._handle_oom_error("EfficientSAM_Everything", bbox)
+                        else:
+                            self.msgBox.showMessageBox("Fatal", f"Runtime error: {e}")
+                            logger.fatal(f"Runtime error: {e}")
+                            raise
+                except Exception as e:
+                        self.msgBox.showMessageBox("Fatal", f"Unexpected error: {e}")
+                        logger.fatal(f"Unexpected error: {e}")
+                        raise
                     
                 for mask in masks:
                     contours = find_contours(mask)
@@ -1400,10 +1345,14 @@ class Canvas(QtWidgets.QWidget):
 
     def loadPixmap(self, pixmap, clear_shapes=True):
         self.pixmap = pixmap
-        if self._ai_model:
-            self._ai_model.setImg(
-                image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+        logger.info("hjkl;tgyhjukl;")
+        self.ai_manager.update_default_img(
+            labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )
+        # if self._ai_model:
+        #     self._ai_model.setImg(
+        #         image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+        #     )
         if clear_shapes:
             self.shapes = []
         self.update()

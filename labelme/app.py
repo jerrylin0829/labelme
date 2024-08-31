@@ -20,7 +20,7 @@ from qtpy.QtCore import Qt
 
 from labelme import PY2
 from labelme import __appname__
-from labelme.ai import MODEL_DEFAULT
+from labelme.ai import MODELS_ENABLE
 from labelme.ai import RUN_MODES
 from labelme.ai import _utils  ## added by alvin
 from labelme.config import get_config
@@ -51,11 +51,11 @@ from . import utils
 
 LABEL_COLORMAP = imgviz.label_colormap()
 
-WINDOW_COUNT = 0
+
 
 class MainWindow(QtWidgets.QMainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
-
+    WINDOW_COUNT = 0
     def __init__(
         self,
         config=None,
@@ -105,7 +105,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._noSelectionSlot = False
 
         self._copied_shapes = None
-        
+
         
         # Main widgets and related state.
         self.labelDialog = LabelDialog(
@@ -388,8 +388,8 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         createAiPolygonMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
+            lambda: self.canvas.ai_manager.initialize_model(
+                model_name=self._selectAiModelComboBox.currentText()
             )
             if self.canvas.createMode == "ai_polygon"
             else None
@@ -404,8 +404,8 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         createAiMaskMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
+            lambda: self.canvas.ai_manager.initialize_model(
+                model_name=self._selectAiModelComboBox.currentText()
             )
             if self.canvas.createMode == "ai_mask"
             else None
@@ -420,8 +420,8 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         createAiBoundingBoxMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
+            lambda: self.canvas.ai_manager.initialize_model(
+                model_name=self._selectAiModelComboBox.currentText()
             )
             if self.canvas.createMode == "ai_boundingbox" 
             else None
@@ -929,7 +929,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox = QtWidgets.QComboBox()
         selectAiModel.defaultWidget().layout().addWidget(self._selectAiModelComboBox)
 
-        model_names = [model.name for model in MODEL_DEFAULT]
+        model_names = [model.name for model in MODELS_ENABLE]
         self._selectAiModelComboBox.addItems(model_names)
         if self._config["ai"]["default"] in model_names:
             model_index = model_names.index(self._config["ai"]["default"])
@@ -940,15 +940,15 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             model_index = 0
             
-        # for i in range(0,self._selectAiModelComboBox.count()) :
-        #     self._selectAiModelComboBox.setCurrentIndex(model_index)
-        # self._selectAiModelComboBox.currentIndexChanged.connect(
-        #     lambda: self.canvas.initializeAiModel(
-        #         name=self._selectAiModelComboBox.currentText(),
-        #     )
-        #     if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
-        #     else None
-        # )
+       
+        self._selectAiModelComboBox.setCurrentIndex(model_index)
+        self._selectAiModelComboBox.currentIndexChanged.connect(
+            lambda: self.canvas.ai_manager.initialize_model(
+                model_name=self._selectAiModelComboBox.currentText(),
+            )
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox","ai_everything"]
+            else None
+        )
         self._selectAiModelComboBox.setEnabled(False) 
         
         
@@ -1112,31 +1112,31 @@ class MainWindow(QtWidgets.QMainWindow):
             
     def toggleSAMeverything(self):#! added by Alvin 
         self._isTopPanel = True
-        
         self.toggleDrawMode(False, createMode="ai_everything")
-        self.canvas.freeModelInstance()
         
-        self.canvas.nms  = self.nms 
-        
-        self.canvas.setBatch(self.batch)
-        self.canvas.initAimodel("EfficientSAM_Everything",)
+        self.canvas.initAimodel(
+            "EfficientSAM_Everything", 
+            dev = self.canvas._ai_everything_initDev ,
+            img = utils.img_qt_to_arr(QtGui.QImage.fromData(self.imageData)),
+            batch = self.batch ,
+            nms_thresh = self.nms
+        )
         self.changeStateEverythingWidget()
+        
         cuda_num = self.canvas._ai_everything_initDev
-        self.canvas.seteSAMEverythingDev(cuda_num)
-        
-        logger.info(self.canvas.getEverythingCudaNum())
-        
         selected_device = self._selectRunModeComboBox.itemText(
             cuda_num if cuda_num is not None else 0 
         )
-        if WINDOW_COUNT == 0 :
+        if self.WINDOW_COUNT == 0 : #! Avoid duplicate windows when reloading pictures.
             self.msgBox.showMessageBox(
                     "Info", f"Inference device switched to \n {selected_device} \n in Everything mode."
             ) 
         self._selectRunModeComboBox.setEnabled(False) 
         
         self._isTopPanel = False
-        WINDOW_COUNT+=1
+        self.WINDOW_COUNT+=1
+        
+        
     def setEverythingGridInput(self,txt): #! added by Alvin 
         self.canvas.setEverythingGrid(int(txt))
          
@@ -1147,7 +1147,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
     
     def directChange2Everything(self,model_name):#! added by Alvin  
-        ''' model_name 自行擴充'''
+        ''' model_name -> Self-expansion'''
         self.changeAiMode()
         self.toggleSAMeverything()
         
@@ -1159,39 +1159,6 @@ class MainWindow(QtWidgets.QMainWindow):
         dialog = ParameterDialog(self.canvas._ai_everything)
         if dialog.exec_() == QDialog.Accepted:  
             dialog.setParameters() 
-            
-    # def batchVramSplit(self):  #! added by Alvin
-    #     if self.canvas._ai_everything is None :
-    #         self.msgBox.showMessageBox(
-    #             "Info", f"Please activate Everything mode before making the settings."
-    #         )
-    #         return
-        
-        # def load_parameters():
-        #     batchForm.batch_size.setValue(self.canvas.getBatchQuery())
-            
-        # batchForm = QDialog(self)
-        # batchForm.setWindowTitle("VRAM Usage Limit per Batch")
-
-        # layout = QtWidgets.QFormLayout()
-        # batchForm.batch_size = QtWidgets.QSpinBox(batchForm)
-        # batchForm.batch_size.setRange(0, 1024)
-        # batchForm.batch_size.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        # layout.addRow('Batch size:', batchForm.batch_size)
-
-        # load_parameters() 
-
-        # button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
-        # button_box.accepted.connect(batchForm.accept)  
-        # button_box.rejected.connect(batchForm.reject) 
-        # layout.addWidget(button_box)
-
-        # batchForm.setLayout(layout)
-
-        # if batchForm.exec_() == QDialog.Accepted:
-        #     self.canvas.setBatchQuery(int(batchForm.batch_size.value()))
-        #     print(f"Batch size selected: {self.canvas.getBatchQuery()}")
-
 
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)

@@ -182,14 +182,14 @@ class Canvas(QtWidgets.QWidget):
         
         
     def changeAiRunMode(self,mode): #! added by Alvin
-        self.ai_manager.setParameters(
+        self.ai_manager.set_parameters(
             "EfficientSam (accuracy)",
             set_type = "setProvider",
             val=mode
         )
                
     def setPctLow(self, val): #!added by alvin
-        self.ai_manager.setParameters(
+        self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "PctLow",
             val=val
@@ -203,14 +203,14 @@ class Canvas(QtWidgets.QWidget):
         )
                 
     def seteSAMEverythingDev(self,num): #!added by alvin
-        self.ai_manager.setParameters(
+        self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "InferenceDev",
             val=num
         )
         
     def setEverythingGrid(self,grid_size) : #!added by alvin
-        self.ai_manager.setParameters(
+        self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "GridSize",
             val=grid_size
@@ -218,14 +218,14 @@ class Canvas(QtWidgets.QWidget):
         logger.info(f"success {grid_size}")
         
     def setEverythingNMS(self,nms_thresh):#!added by alvin
-        self.ai_manager.setParameters(
+        self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "NMS",
             val=nms_thresh
         )
           
     def setEverythingMFA(self,min_filter_area):  #? MFA : Min Filter Area
-         self.ai_manager.setParameters(
+         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "MinFilterArea",
             val=min_filter_area

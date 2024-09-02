@@ -68,7 +68,10 @@ class AIModelManager:
 
         try:
             if model_class.name == "EfficientSAM_Everything":
-                model = build_efficient_sam_vits(batch=kwargs.get("batch", 1), dev=kwargs.get("dev"))
+                model = build_efficient_sam_vits(
+                    batch=kwargs.get("batch", 1), 
+                    dev=kwargs.get("dev")
+                )
                 return EfficientSAM_Everything(
                     model, 
                     dev=kwargs.get("dev"),
@@ -240,13 +243,20 @@ class AIModelManager:
         Returns:
             object: The result of the model's run method after recovery, or None if recovery fails.
         """
+        #! Currently only available in everything mode
         if retry_count >= max_retries:
             logger.error("Maximum number of retries exceeded, model cannot be recovered.")
             return None
-
+            
         try:
-            grid_size = int(self.models[model_name].getEverythingGrid() / 2)
-            self.models[model_name].setEverythingGrid(grid_size)
+            grid_size = int(
+                self.get_parameters(model_name,"GridSize") / 2
+            )
+            self.set_parameters(
+                model_name,
+                set_type="GridSize",
+                val=grid_size
+            )
             return self._run_model(model_name, bbox=bbox)
         except Exception as e:
             logger.error(f"Model recovery failure on retry {retry_count + 1}/{max_retries}: {e}")

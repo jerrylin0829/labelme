@@ -946,7 +946,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.ai_manager.initialize_model(
                 model_name=self._selectAiModelComboBox.currentText(),
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox","ai_everything"]
+            if self.canvas.createMode in ["ai_polygon", "ai_mask", "ai_boundingbox"]
             else None
         )
         self._selectAiModelComboBox.setEnabled(False) 

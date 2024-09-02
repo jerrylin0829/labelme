@@ -185,14 +185,14 @@ class Canvas(QtWidgets.QWidget):
         self.ai_manager.setParameters(
             "EfficientSam (accuracy)",
             set_type = "setProvider",
-            cuda_num= mode
+            val=mode
         )
                
     def setPctLow(self, val): #!added by alvin
         self.ai_manager.setParameters(
             "EfficientSAM_Everything",
             set_type = "PctLow",
-            val= val
+            val=val
         )
          
     def setPctUp(self, val): #!added by alvin
@@ -206,14 +206,14 @@ class Canvas(QtWidgets.QWidget):
         self.ai_manager.setParameters(
             "EfficientSAM_Everything",
             set_type = "InferenceDev",
-            dev=num
+            val=num
         )
         
     def setEverythingGrid(self,grid_size) : #!added by alvin
         self.ai_manager.setParameters(
             "EfficientSAM_Everything",
             set_type = "GridSize",
-            grid=grid_size
+            val=grid_size
         )
         logger.info(f"success {grid_size}")
         
@@ -221,14 +221,14 @@ class Canvas(QtWidgets.QWidget):
         self.ai_manager.setParameters(
             "EfficientSAM_Everything",
             set_type = "NMS",
-            nms=nms_thresh
+            val=nms_thresh
         )
           
     def setEverythingMFA(self,min_filter_area):  #? MFA : Min Filter Area
          self.ai_manager.setParameters(
             "EfficientSAM_Everything",
             set_type = "MinFilterArea",
-            mfa=min_filter_area
+            val=min_filter_area
         )       
         
     def getPctUp(self):

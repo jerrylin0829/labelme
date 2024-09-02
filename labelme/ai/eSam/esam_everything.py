@@ -25,6 +25,7 @@ from segment_anything.utils.amg import (
 )
 
 GRID = 25
+#FILTER_MODE = ['Median','PERCENT']
 FILTER_MODE = ['PERCENT']
 msgBox = MessageBox()
 
@@ -81,7 +82,7 @@ class EfficientSAM_Everything(BaseModel):
 
     def set_parameters(self, **kwargs):
         set_type = kwargs.get("set_type")
-        value = kwargs.get("value")
+        value = kwargs.get("val")
 
         setters = {
             "InferenceDev": self._set_inference_dev,
@@ -196,19 +197,23 @@ class EfficientSAM_Everything(BaseModel):
             unchanged = unchanged and not changed
             new_masks.append(torch.as_tensor(mask).unsqueeze(0).to(self.device))
             scores.append(float(unchanged))
+            
         masks = torch.cat(new_masks, dim=0)
         boxes = batched_mask_to_box(masks)
+        
         keep_by_nms = batched_nms(
             boxes.float(),
             torch.as_tensor(scores).to(self.device),
             torch.zeros_like(boxes[:, 0]).to(self.device),
             iou_threshold=self.nms_thresh,
         )
+        
         for i_mask in keep_by_nms:
             if scores[i_mask] == 0.0:
                 mask_torch = masks[i_mask].unsqueeze(0).to(self.device)
                 rles[i_mask] = mask_to_rle_pytorch(mask_torch)
         masks = [rle_to_mask(rles[i][0]) for i in keep_by_nms]
+        
         return masks
 
     def get_predictions_given_embeddings_and_queries(self, img, points, point_labels):
@@ -389,5 +394,4 @@ class EfficientSAM_Everything(BaseModel):
         if result is None:
             logger.error("result_queue returned None, returning an empty list.")
             return []
-
         return result

@@ -5,9 +5,21 @@ from .qdialog_generator import CustomDialog
 class ParameterDialog(CustomDialog):
     def __init__(self, esam_instance):
         fields = {
-            'Upper percentile': {'type': 'QSpinBox', 'range': [0, 100], 'default': esam_instance.get_parameters("PctUp")},
-            'Lower percentile': {'type': 'QSpinBox', 'range': [0, 100], 'default': esam_instance.get_parameters("PctLow")},
-            'Min Filter Area (MFA)': {'type': 'QSpinBox', 'range': [0, 400], 'default': esam_instance.get_parameters("MinFilterArea")},
+            'Upper percentile': {
+                'type': 'QSpinBox', 
+                'range': [0, 100], 
+                'default': esam_instance.get_parameters("PctUp")
+            },
+            'Lower percentile': {
+                'type': 'QSpinBox', 
+                'range': [0, 100], 
+                'default': esam_instance.get_parameters("PctLow")
+            },
+            'Min Filter Area (MFA)': {
+                'type': 'QSpinBox', 
+                'range': [0, 400], 
+                'default': esam_instance.get_parameters("MinFilterArea")
+            },
         }
 
         super().__init__(title="Parameter Settings", fields=fields,show_help=True)
@@ -20,7 +32,16 @@ class ParameterDialog(CustomDialog):
 
     def setParameters(self):
         inputs = self.get_inputs()
-        self.esam_instance.set_parameters(set_type = "PctUp", val = inputs['Upper percentile'])
-        self.esam_instance.set_parameters(set_type = "PctLow", val = inputs['Lower percentile'])
-        self.esam_instance.set_parameters(set_type = "MinFilterArea", mfa = inputs['Min Filter Area (MFA)'])
+        self.esam_instance.set_parameters(
+            set_type = "PctUp", 
+            val = inputs['Upper percentile']
+        )
+        self.esam_instance.set_parameters(
+            set_type = "PctLow", 
+            val = inputs['Lower percentile']
+        )
+        self.esam_instance.set_parameters(
+            set_type = "MinFilterArea", 
+            val = inputs['Min Filter Area (MFA)']
+        )
 

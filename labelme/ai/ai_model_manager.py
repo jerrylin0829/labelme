@@ -109,10 +109,10 @@ class AIModelManager:
             self.set_model_img(model_name, img)
             
     def set_parameters(self ,model_name, **kwargs):        
-        self.models[model_name].setParameters(**kwargs)
+        self.models[model_name].set_parameters(**kwargs)
            
     def get_parameters(self ,model_name, get_type):     
-        return self.models[model_name].getParameters(get_type)
+        return self.models[model_name].get_parameters(get_type)
          
     def set_model_img(self, model_name, img):
         """

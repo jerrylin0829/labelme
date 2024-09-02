@@ -1142,24 +1142,16 @@ class Canvas(QtWidgets.QWidget):
                 x2, y2 = int(self.current.points[1].x()), int(self.current.points[1].y())
                 bbox = (x1, y1, x2, y2)
                 
-                try :
-                    masks = self.ai_manager._run_model(
-                        model_name = "EfficientSAM_Everything",
-                        ai_type = "ai_everything",
-                        bbox = bbox,
-                    )
-                except RuntimeError as e:
-                        if "out of memory" in str(e).lower():
-                            self.ai_manager._handle_oom_error("EfficientSAM_Everything", bbox)
-                        else:
-                            self.msgBox.showMessageBox("Fatal", f"Runtime error: {e}")
-                            logger.fatal(f"Runtime error: {e}")
-                            raise
+                try:
+                        masks = self.ai_manager._run_model_with_recovery(
+                            model_name="EfficientSAM_Everything",
+                            bbox=bbox
+                        )
                 except Exception as e:
-                        self.msgBox.showMessageBox("Fatal", f"Unexpected error: {e}")
-                        logger.fatal(f"Unexpected error: {e}")
-                        raise
-                    
+                    self.msgBox.showMessageBox("Fatal", f"Unexpected error: {e}")
+                    logger.fatal(f"Unexpected error: {e}")
+                    raise
+                
                 for mask in masks:
                     contours = find_contours(mask)
                     for contour in contours:

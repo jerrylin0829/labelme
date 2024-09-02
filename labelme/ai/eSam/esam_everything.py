@@ -370,7 +370,7 @@ class EfficientSAM_Everything(BaseModel):
     def run(self, **kwargs):
         bbox = kwargs.get("bbox")
         
-        def target_func(semaphore):
+        def everything_in_thread(semaphore):
             try:
                 logger.info("Running EfficientSAM in background thread.")
                 result = self.run_everything(bbox)
@@ -385,7 +385,7 @@ class EfficientSAM_Everything(BaseModel):
                 semaphore.release()  
 
         semaphore = threading.Semaphore(0)
-        self.thread = threading.Thread(target=target_func, args=(semaphore,))
+        self.thread = threading.Thread(target=everything_in_thread, args=(semaphore,))
         self.thread.start()
         semaphore.acquire()
 

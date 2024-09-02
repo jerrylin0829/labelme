@@ -1156,7 +1156,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._everythingPtrBtn.setEnabled(self._iseSAMMode)   
         
     def openEverythingDialog(self): #! added by Alvin
-        dialog = ParameterDialog(self.canvas._ai_everything)
+        dialog = ParameterDialog(self.canvas.ai_manager.get_model("EfficientSAM_Everything"))
         if dialog.exec_() == QDialog.Accepted:  
             dialog.setParameters() 
 

@@ -177,71 +177,103 @@ class Canvas(QtWidgets.QWidget):
                 img = labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )
         
-    def setAiImg(self,img):
+    def setAiImg(self,img): #!added by alvin
         self.ai_manager.set_model_img(img)
-         
-    def setPctLow(self, val):
-        self._ai_everything.setPctLow(val)
-         
-    def setPctUp(self, val):
-        self._ai_everything.setPctUp(val) 
-                
-    def setBatchQuery(self,val):
-        self._ai_everything.model.setBatchQuery(val)
         
-    def getPctUp(self):
-        return self._ai_everything.getPctLow()
+        
+    def changeAiRunMode(self,mode): #! added by Alvin
+        self.ai_manager.setParameters(
+            "EfficientSam (accuracy)",
+            set_type = "setProvider",
+            cuda_num= mode
+        )
+               
+    def setPctLow(self, val): #!added by alvin
+        self.ai_manager.setParameters(
+            "EfficientSAM_Everything",
+            set_type = "PctLow",
+            val= val
+        )
          
-    def getPctUp(self):
-        return self._ai_everything.getPctUp()  
-              
-    def getBatchQuery(self):
-        return self._ai_everything.model.getBatchQuery()   
-    
-    def runEverything(self,bbox): #!added by alvin
-        masks = self._ai_everything.run_everything(bbox)
-        return masks
-    
+    def setPctUp(self, val): #!added by alvin
+        self.ai_manager.set_parameters(
+            "EfficientSAM_Everything",
+            set_type = "PctUp",
+            val= val
+        )
+                
     def seteSAMEverythingDev(self,num): #!added by alvin
-        self._ai_everything.setInferenceDev(num)
+        self.ai_manager.setParameters(
+            "EfficientSAM_Everything",
+            set_type = "InferenceDev",
+            dev=num
+        )
         
     def setEverythingGrid(self,grid_size) : #!added by alvin
-        self._ai_everything.setGridSize(grid_size)
+        self.ai_manager.setParameters(
+            "EfficientSAM_Everything",
+            set_type = "GridSize",
+            grid=grid_size
+        )
         logger.info(f"success {grid_size}")
         
     def setEverythingNMS(self,nms_thresh):#!added by alvin
-        self._ai_everything.setNMS(nms_thresh)
+        self.ai_manager.setParameters(
+            "EfficientSAM_Everything",
+            set_type = "NMS",
+            nms=nms_thresh
+        )
           
     def setEverythingMFA(self,min_filter_area):  #? MFA : Min Filter Area
-        self._ai_everything.setMinFilterArea(min_filter_area)
+         self.ai_manager.setParameters(
+            "EfficientSAM_Everything",
+            set_type = "MinFilterArea",
+            mfa=min_filter_area
+        )       
+        
+    def getPctUp(self):
+        return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "PctUp"
+        )
+    def getPctLow(self):
+        return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "PctLow"
+        )    
+         
+    def getBatchQuery(self):
+        return self._ai_everything.model.getBatchQuery()   
     
-    def setEverythingIQR(self,iqr):#!added by alvin
-        self._ai_everything.setIQR(iqr)   
-
     def getEverythingCudaNum(self):#!added by alvin
-        logger.warn(self._ai_everything.getInferenceDev())
-        return self._ai_everything.getInferenceDev()
+        return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "InferenceDev"
+        ) 
         
     def getEverythingGrid(self): #!added by alvin
-        return self._ai_everything.getGridSize()
-    
-    # def getAiInferenceOption(self): #!added by alvin
-    #     return self._ai_model.getAiInferenceOption()
-    
+         return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "GridSize"
+        )        
+
     def getEverythingNMS(self): #!added by alvin
-        return self._ai_everything.getNMS()
+        return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "NMS"
+        )           
           
     def getEverythingMFA(self):  #? MFA : Min Filter Area
-        return self._ai_everything.getMinFilterArea()
-    
-    def getEverythingIQR(self):#!added by alvin
-        return self._ai_everything.getIQR()      
+        return self.ai_manager.get_parameters(
+            "EfficientSAM_Everything",
+            "MFA"
+        )        
         
-    def changeAiRunMode(self,mode): ## added by Alvin
-        self._ai_model.set_providers(mode)
-
-    def getRunMode(self): ## added by Alvin
-        return self._ai_model.get_runMode()
+    def getRunMode(self): #! added by Alvin
+        return self.ai_manager.get_parameters(
+            "EfficientSam (accuracy)",
+            "RunMode"
+        )  
     
     def getShapesNum(self):
         return self.shapes_num

@@ -1,24 +1,21 @@
-import matplotlib.pyplot as plt
+import os
+import sys
+import io
+import queue
+import threading
+
 import numpy as np
 import torch
-import queue
-from torchvision.transforms import ToTensor
-from PIL import Image
-import io
-
 import cv2
-import threading
-import sys
-import os
+from PIL import Image
+import matplotlib.pyplot as plt
+from torchvision.transforms import ToTensor
+from torchvision.ops.boxes import batched_nms, box_area
+
 from labelme.logger import logger
 from ...widgets.msg_box import MessageBox
-
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(parent_dir)
-
 from .build_esam import build_efficient_sam_vits
 from ..base_model import BaseModel
-
 from segment_anything.utils.amg import (
     batched_mask_to_box,
     calculate_stability_score,
@@ -26,10 +23,8 @@ from segment_anything.utils.amg import (
     remove_small_regions,
     rle_to_mask,
 )
-from torchvision.ops.boxes import batched_nms, box_area
 
 GRID = 25
-#FILTER_MODE = ['Median', 'PERCENT']
 FILTER_MODE = ['PERCENT']
 msgBox = MessageBox()
 
@@ -39,11 +34,11 @@ class EfficientSAM_Everything(BaseModel):
     def __init__(
         self, 
         model, 
-        dev, 
-        nms_thresh, 
+        dev=None, 
+        nms_thresh=0.5, 
         grid_size=GRID, 
         min_region_area=200, 
-        fliter_mode=0, 
+        filter_mode=0, 
         score=0.9, 
         iou=0.7, 
         pctUp=95,
@@ -53,8 +48,10 @@ class EfficientSAM_Everything(BaseModel):
     ):
         if dev is not None and torch.cuda.is_available():
             self.device = torch.device(f"cuda:{dev}")
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
         else:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cpu")
         
         self.model = model.to(self.device)
         self.grid_size = grid_size
@@ -66,13 +63,13 @@ class EfficientSAM_Everything(BaseModel):
         self.pctUp = pctUp
         self.pctLow = pctLow
         self.filter_delta = filter_delta
-        self.fliter_mode = fliter_mode
+        self.filter_mode = filter_mode
         self.img = None
         self.cropImg = None
 
         self.thread = None 
         self.result_queue = queue.Queue()
-        self.semaphore = threading.Semaphore(0)  
+        self.semaphore = threading.Semaphore(0)
 
     def free_resources(self):
         try:
@@ -82,74 +79,111 @@ class EfficientSAM_Everything(BaseModel):
         except Exception as e:
             logger.fatal(f"Error releasing resources: {e}")
 
+    def set_parameters(self, **kwargs):
+        set_type = kwargs.get("set_type")
+        value = kwargs.get("value")
 
-    def setImg(self, image):
+        setters = {
+            "InferenceDev": self._set_inference_dev,
+            "GridSize": self._set_grid_size,
+            "FilterMode": self._set_filter_mode,
+            "NMS": self._set_nms,
+            "MinFilterArea": self._set_min_filter_area,
+            "PctUp": self._set_pct_up,
+            "PctLow": self._set_pct_low,
+        }
+
+        setter = setters.get(set_type)
+        if setter:
+            setter(value)
+        else:
+            raise ValueError(f"Unknown set_type: {set_type}")
+
+    def get_parameters(self, get_type):
+        getters = {
+            "InferenceDev": self._get_inference_dev,
+            "GridSize": self._get_grid_size,
+            "FilterMode": self._get_filter_mode,
+            "NMS": self._get_nms,
+            "MinFilterArea": self._get_min_filter_area,
+            "PctUp": self._get_pct_up,
+            "PctLow": self._get_pct_low,
+        }
+
+        getter = getters.get(get_type)
+        if getter:
+            return getter()
+        else:
+            raise ValueError(f"Unknown get_type: {get_type}")
+
+    def set_img(self, image):
         self.img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
-    def setInferenceDev(self, num):
+    def _set_inference_dev(self, num):
         self.device = torch.device(
             f"cuda:{num}" if torch.cuda.is_available() else "cpu"
         )
         self.model = self.model.to(self.device)
         
-    def setGridSize(self, grid_size):
+    def _set_grid_size(self, grid_size):
         self.grid_size = grid_size
         
-    def setFliterMode(self, mode):
-        self.fliter_mode = mode
+    def _set_filter_mode(self, mode):
+        self.filter_mode = mode
         
-    def setNMS(self, nms_thresh):
+    def _set_nms(self, nms_thresh):
         self.nms_thresh = nms_thresh
         
-    def setMinFilterArea(self, min_filter_area):
+    def _set_min_filter_area(self, min_filter_area):
+        logger.info("_setMinFilterArea")
         self.min_filter_area = min_filter_area
-
-    def setDelta(self, filter_delta):
-        self.filter_delta = filter_delta
         
-    def setScore(self, val):
-        self.score = val
-        
-    def setIOU(self, val):
-        self.iou_thresh = val
-        
-    def setPctUp(self, val):
+    def _set_pct_up(self, val):
         self.pctUp = val  
-        logger.info("test")
+        logger.info("_set_pct_up")
         
-    def setPctLow(self, val):
+    def _set_pct_low(self, val):
         self.pctLow = val 
-        logger.info("test")
-
-    def getGridSize(self):
+        logger.info("_set_pct_low")
+        
+    # def _set_delta(self, filter_delta):
+    #     self.filter_delta = filter_delta
+        
+    # def _set_score(self, val):
+    #     self.score = val
+        
+    # def _set_iou(self, val):
+    #     self.iou_thresh = val
+        
+    def _get_grid_size(self):
         return self.grid_size
     
-    def getInferenceDev(self):
+    def _get_inference_dev(self):
         return self.device.index
     
-    def getFliterMode(self):
-        return self.fliter_mode
+    def _get_filter_mode(self):
+        return self.filter_mode
     
-    def getNMS(self):
+    def _get_nms(self):
         return self.nms_thresh 
     
-    def getMinFilterArea(self):
+    def _get_min_filter_area(self):
         return self.min_filter_area 
     
-    def getDelta(self):
-        return self.filter_delta 
-    
-    def getScore(self):
-        return self.score
-    
-    def getIOU(self):   
-        return self.iou_thresh   
-    
-    def getPctUp(self):
+    def _get_pct_up(self):
         return self.pctUp
         
-    def getPctLow(self):
+    def _get_pct_low(self):
         return self.pctLow
+    
+    # def _getDelta(self):
+    #     return self.filter_delta 
+    
+    # def _getScore(self):
+    #     return self.score
+    
+    # def _getIOU(self):   
+    #     return self.iou_thresh   
     
     def process_small_region(self, rles):
         new_masks = []
@@ -205,13 +239,13 @@ class EfficientSAM_Everything(BaseModel):
     def filter_masks_by_area(self, masks):
         mask_areas = [np.sum(mask) for mask in masks]
         sorted_mask_areas = sorted(mask_areas)
-        if FILTER_MODE[self.fliter_mode] == 'Median':
+        if FILTER_MODE[self.filter_mode] == 'Median':
             median = np.median(sorted_mask_areas)
             lower_bound = median - self.filter_delta
             upper_bound = median + self.filter_delta
             logger.info(f"mask_areas: {sorted_mask_areas}")
             
-        elif FILTER_MODE[self.fliter_mode] == 'PERCENT':
+        elif FILTER_MODE[self.filter_mode] == 'PERCENT':
             lower_bound = np.percentile(mask_areas, self.pctLow)
             upper_bound = np.percentile(mask_areas, self.pctUp)
             

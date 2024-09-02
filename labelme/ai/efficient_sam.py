@@ -15,7 +15,8 @@ class EfficientSam(BaseModel):
     def __init__(self, encoder_path, decoder_path):
 
         self._providers = _utils.get_available_providers()
-
+        self.cuda_num = None
+        
         self._encoder_path = encoder_path
         self._decoder_path = decoder_path
 
@@ -24,14 +25,27 @@ class EfficientSam(BaseModel):
 
         self._semaphore = threading.Semaphore(1)
         self._image_embedding_cache = collections.OrderedDict()
-
-    def set_providers(self, list_idx):
+        
+    def set_parameters(self,**kwargs):
+        set_type  =  kwargs.get("set_type")
+        if set_type == "setProvider" :
+            self._set_providers(kwargs.get("cuda_num"))
+            return
+        
+    def get_parameters(self,get_type):
+        if get_type == "RunMode" :
+            return self._getCudaNum()
+        
+    def _set_providers(self, list_idx):
+        self.cuda_num = list_idx
         self._providers = _utils.set_providers(list_idx)
         self._encoder_session = ort.InferenceSession(self._encoder_path, providers=self._providers)
         self._decoder_session = ort.InferenceSession(self._decoder_path, providers=self._providers)
         
-
-    def setImg(self, image: np.ndarray):
+    def _getCudaNum(self):
+        return self.cuda_num
+    
+    def set_img(self, image: np.ndarray):
         
         with self._semaphore:
             self._image = image

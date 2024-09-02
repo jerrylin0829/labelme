@@ -314,7 +314,11 @@ def load_model_checkpoint(sam: nn.Module, checkpoint: str = None, dev: int = Non
 
     try:
         map_location = f"cuda:{dev}" if dev is not None else "cuda:0"
-        state_dict = torch.load(checkpoint, map_location=map_location)
+        state_dict = torch.load(
+                checkpoint,
+                map_location=map_location,
+                weights_only=True
+            )
         print(f"Loaded state_dict keys: {list(state_dict.keys())}")  
     except Exception as e:
         msgbox.showMessageBox("Error", f"Error loading checkpoint: {e}")

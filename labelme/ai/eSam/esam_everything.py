@@ -69,16 +69,19 @@ class EfficientSAM_Everything(BaseModel):
         self.cropImg = None
 
         self.thread = None 
+        self.thread_lock = threading.Lock()
+        self.result_lock = threading.Lock()
         self.result_queue = queue.Queue()
         self.semaphore = threading.Semaphore(0)
 
     def free_resources(self):
-        try:
-            del self.model
-            torch.cuda.empty_cache()
-            logger.info("Resources have been successfully released.")
-        except Exception as e:
-            logger.fatal(f"Error releasing resources: {e}")
+        with self.thread_lock:
+            try:
+                del self.model
+                torch.cuda.empty_cache()
+                logger.info("Resources have been successfully released.")
+            except Exception as e:
+                logger.fatal(f"Error releasing resources: {e}")
 
     def set_parameters(self, **kwargs):
         set_type = kwargs.get("set_type")
@@ -375,23 +378,28 @@ class EfficientSAM_Everything(BaseModel):
                 logger.info("Running EfficientSAM in background thread.")
                 result = self.run_everything(bbox)
                 logger.debug(f"Thread result: {result}")
-                if result is None:
-                    logger.error("run_everything returned None.")
-                self.result_queue.put(result)
+                with self.result_lock:
+                    if result is None:
+                        logger.error("run_everything returned None.")
+                    self.result_queue.put(result)
             except Exception as e:
                 logger.error(f"Error in target_func: {str(e)}")
-                self.result_queue.put([])  
+                with self.result_lock:
+                    self.result_queue.put([])  
             finally:
                 semaphore.release()  
 
-        semaphore = threading.Semaphore(0)
-        self.thread = threading.Thread(target=everything_in_thread, args=(semaphore,))
-        self.thread.start()
-        semaphore.acquire()
+        with self.thread_lock:
+            self.semaphore = threading.Semaphore(0)
+            self.thread = threading.Thread(target=everything_in_thread, args=(self.semaphore,))
+            self.thread.start()
 
-        result = self.result_queue.get()
-        logger.debug(f"Result obtained from queue: {result}")
-        if result is None:
-            logger.error("result_queue returned None, returning an empty list.")
-            return []
+        self.semaphore.acquire()
+
+        with self.result_lock:
+            result = self.result_queue.get()
+            logger.debug(f"Result obtained from queue: {result}")
+            if result is None:
+                logger.error("result_queue returned None, returning an empty list.")
+                return []
         return result

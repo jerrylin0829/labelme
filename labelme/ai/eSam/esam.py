@@ -199,7 +199,6 @@ class EfficientSam(nn.Module):
         batched_images: torch.Tensor,
         batched_points: torch.Tensor,
         batched_point_labels: torch.Tensor,
-        max_queries_per_batch = BATCH,  #! added by alvin (New para.)
         scale_to_original_image_size: bool = True,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """

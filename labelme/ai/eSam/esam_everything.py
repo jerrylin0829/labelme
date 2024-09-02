@@ -29,7 +29,8 @@ from segment_anything.utils.amg import (
 from torchvision.ops.boxes import batched_nms, box_area
 
 GRID = 25
-FILTER_MODE = ['Median', 'PERCENT']
+#FILTER_MODE = ['Median', 'PERCENT']
+FILTER_MODE = ['PERCENT']
 msgBox = MessageBox()
 
 class EfficientSAM_Everything(BaseModel):

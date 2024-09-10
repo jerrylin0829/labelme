@@ -10,6 +10,7 @@ from .eSam.esam_everything import EfficientSAM_Everything
 class AIModelManager:
     def __init__(self):
         self.models = {}
+        #self.thread_manager = ThreadManager()
         self.img = None
 
     def initialize_model(self, model_name, **kwargs):
@@ -260,7 +261,11 @@ class AIModelManager:
             return self._run_model(model_name, bbox=bbox)
         except Exception as e:
             logger.error(f"Model recovery failure on retry {retry_count + 1}/{max_retries}: {e}")
-            return self._try_recover_model(model_name, bbox, retry_count + 1, max_retries)
+            return self._try_recover_model(
+                model_name, 
+                bbox, retry_count + 1, 
+                max_retries
+            )
 
     def _oom_avoid(self, model_name):
         """

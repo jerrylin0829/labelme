@@ -391,7 +391,10 @@ class EfficientSAM_Everything(BaseModel):
 
         with self.thread_lock:
             self.semaphore = threading.Semaphore(0)
-            self.thread = threading.Thread(target=everything_in_thread, args=(self.semaphore,))
+            self.thread = threading.Thread(
+                target=everything_in_thread, 
+                args=(self.semaphore,)
+            )
             self.thread.start()
 
         self.semaphore.acquire()

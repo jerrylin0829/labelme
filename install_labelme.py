@@ -4,97 +4,86 @@ import sys
 import re
 import argparse
 import platform
+from packaging import version
+import logging
 
-cuda_version = None  
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def get_nvcc_version(nvcc_path):
+    try:
+        result = subprocess.run([nvcc_path, '--version'], capture_output=True, text=True, check=True)
+        version_match = re.search(r'release (\d+\.\d+)', result.stdout)
+        if version_match:
+            return version_match.group(1)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.error(f"Failed to run nvcc at {nvcc_path}: {e}")
+    return None
 
 def detect_cuda_version(cuda_dir=None):
     cuda_versions = []
 
     if platform.system() == "Linux":
-        cuda_base_path = "/usr/local" if cuda_dir is None else cuda_dir
-
+        cuda_base_path = cuda_dir or os.environ.get('CUDA_HOME') or '/usr/local'
         for entry in os.listdir(cuda_base_path):
             if entry.startswith("cuda"):
                 nvcc_path = os.path.join(cuda_base_path, entry, "bin", "nvcc")
                 if os.path.exists(nvcc_path):
-                    try:
-                        result = subprocess.run([nvcc_path, '--version'], capture_output=True, text=True, check=True)
-                        version_match = re.search(r'release (\d+)\.(\d+)', result.stdout)
-                        if version_match:
-                            major = version_match.group(1)
-                            minor = version_match.group(2)
-                            cuda_versions.append((f"{major}.{minor}", entry))
-                    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                        print(f"Cannot run nvcc in {entry}: {e}")
-
+                    ver = get_nvcc_version(nvcc_path)
+                    if ver:
+                        cuda_versions.append((ver, entry))
     elif platform.system() == "Windows":
-        if cuda_dir:
-            cuda_base_path = cuda_dir
-        else:
-            cuda_base_path = os.environ.get("CUDA_PATH", r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
-
-        print(f"Checking CUDA in: {cuda_base_path}")
+        cuda_base_path = cuda_dir or os.environ.get("CUDA_PATH", r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA")
         nvcc_path = os.path.join(cuda_base_path, "bin", "nvcc.exe")
-        print(f"Checking for nvcc.exe in: {nvcc_path}")
-
         if os.path.exists(nvcc_path):
-            print(f"Found nvcc.exe in: {nvcc_path}")
-            try:
-                result = subprocess.run([nvcc_path, '--version'], capture_output=True, text=True, check=True)
-                version_match = re.search(r'release (\d+)\.(\d+)', result.stdout)
-                if version_match:
-                    major = version_match.group(1)
-                    minor = version_match.group(2)
-                    cuda_versions.append((f"{major}.{minor}", "CUDA"))
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                print(f"Failed to run nvcc: {e}")
-        else:
-            print(f"nvcc.exe not found in: {nvcc_path}")
+            ver = get_nvcc_version(nvcc_path)
+            if ver:
+                cuda_versions.append((ver, "CUDA"))
 
     if not cuda_versions:
-        print("No CUDA installations detected.")
+        logger.info("No CUDA installations detected.")
         return None
 
-    latest_version, latest_entry = max(cuda_versions, key=lambda x: float(x[0]))
-    print(f"Using CUDA version {latest_version} from {latest_entry}")
+    latest_version_info = max(cuda_versions, key=lambda x: version.parse(x[0]))
+    latest_version, latest_entry = latest_version_info
+    logger.info(f"Using CUDA version {latest_version} from {latest_entry}")
     return latest_version
 
 def validate_cuda_version(cuda_ver, cuda_dir=None):
     detected_version = detect_cuda_version(cuda_dir)
-    specified_version = cuda_ver if cuda_ver else None
 
-    if specified_version and detected_version:
-        if specified_version != detected_version:
-            print(f"Specified CUDA version {specified_version} is not available, using detected version {detected_version}.")
+    if cuda_ver and detected_version:
+        if cuda_ver != detected_version:
+            logger.warning(f"Specified CUDA version {cuda_ver} is not available, using detected version {detected_version}.")
             return detected_version
-    elif specified_version and not detected_version:
-        print(f"Specified CUDA version {specified_version} is not available. No CUDA installation detected, proceeding with CPU version.")
+    elif cuda_ver and not detected_version:
+        logger.warning(f"Specified CUDA version {cuda_ver} is not available. No CUDA installation detected, proceeding with CPU version.")
         return None
 
     return detected_version
 
-def main(cuda_ver=None, cuda_dir=None):
-    global cuda_version
-
-    if cuda_ver:
-        cuda_version = validate_cuda_version(cuda_ver, cuda_dir)
-    else:
-        cuda_version = detect_cuda_version(cuda_dir)
-
-    print(f"Final CUDA version used for installation: {cuda_version}")
-
+def install_package(cuda_version):
     try:
-        print("Running setup.py, please wait...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
-        print("Installation completed.")
+        if cuda_version:
+            logger.info(f"Installing package with CUDA {cuda_version} support...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "package_name[cuda]"])
+        else:
+            logger.info("Installing package without CUDA support...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "package_name"])
+        logger.info("Installation completed.")
     except subprocess.CalledProcessError as e:
-        print(f"Installation failed: {e}")
+        logger.error(f"Installation failed: {e}")
         sys.exit(1)
 
+def main(cuda_ver=None, cuda_dir=None):
+    cuda_version = validate_cuda_version(cuda_ver, cuda_dir)
+    logger.info(f"Final CUDA version used for installation: {cuda_version}")
+    install_package(cuda_version)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Install labelme with CUDA support.")
+    parser = argparse.ArgumentParser(description="Install package with optional CUDA support.")
     parser.add_argument("--cuda_ver", type=str, help="Specify the CUDA version (e.g., 11.8)")
-    parser.add_argument("--cuda_dir", type=str, help="Specify the cuda installation folder")
+    parser.add_argument("--cuda_dir", type=str, help="Specify the CUDA installation folder")
     args = parser.parse_args()
 
     main(args.cuda_ver, args.cuda_dir)

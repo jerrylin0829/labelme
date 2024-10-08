@@ -13,6 +13,7 @@ class AIModelManager:
         #self.thread_manager = ThreadManager()
         self.img = None
 
+
     def initialize_model(self, model_name, **kwargs):
         """
         Initialize a model by its name, checking for conflicts with other models and releasing them if necessary.
@@ -31,19 +32,20 @@ class AIModelManager:
 
         img = kwargs.get('img', self.img)
         if model_name in self.models:
-            logger.info("Model already initialized.")
+            logger.info(f"Model {model_name} already initialized.")
             return self.models[model_name]
 
         try:
-            logger.warning(f"Initializing model: {model_name}")
+            logger.info(f"Initializing model: {model_name}")
             model = self.build_model(model_name, **kwargs)
-            self.models[model_name] = model
-            self.set_model_img(model_name, img)   
+            with self.lock:
+                self.models[model_name] = model
+            self.set_model_img(model_name, img)
             logger.info(f"Model {model_name} initialized successfully")
             return model
         except Exception as e:
             logger.error(f"Error initializing model {model_name}: {e}")
-            logger.debug(traceback.format_exc())  
+            logger.debug(traceback.format_exc())
             return None
 
     def build_model(self, model_name, **kwargs):

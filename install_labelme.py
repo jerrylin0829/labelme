@@ -12,9 +12,10 @@ def detect_cuda_version(cuda_dir=None):
 
     if platform.system() == "Linux":
         cuda_base_path = "/usr/local" if cuda_dir is None else cuda_dir
-
+        
         for entry in os.listdir(cuda_base_path):
-            if entry.startswith("cuda"):
+            # 可能需要調 cuda 的位址/版本
+            if entry.startswith("CUDA"):
                 nvcc_path = os.path.join(cuda_base_path, entry, "bin", "nvcc")
                 if os.path.exists(nvcc_path):
                     try:

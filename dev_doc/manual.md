@@ -61,3 +61,5 @@ pip install pyinstaller
 pyinstaller labelme.spec
 dist/labelme --version
 ```
+
+**切記要把 ai/weight/efficient_sam_vits.pt.zip 解壓縮 **

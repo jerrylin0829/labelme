@@ -102,7 +102,7 @@ class BaseModel:
 ```
 - Don't forget to add the new model class to the `MODELS_ENABLE` list in `labelme\ai\__init__.py`:
 ```python
-  MODELS_ENABLE = [ ## added by Alvin
+  MODELS_ENABLE = [ 
       EfficientSamVitS,
       EfficientSAM_Everything,
       newModel # 
@@ -163,5 +163,4 @@ You can set ai related parameters such as `nms`, `batch_size` in `labelmerc`.
   shift_auto_shape_color: 0
   label_colors: null
   nms: 0.8
-  batch_size: 45
 ```

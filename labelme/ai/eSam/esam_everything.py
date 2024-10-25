@@ -86,7 +86,7 @@ class EfficientSAM_Everything(BaseModel):
     def set_parameters(self, **kwargs):
         set_type = kwargs.get("set_type")
         value = kwargs.get("val")
-
+        print("set_parameters")
         setters = {
             "InferenceDev": self._set_inference_dev,
             "GridSize": self._set_grid_size,
@@ -104,6 +104,7 @@ class EfficientSAM_Everything(BaseModel):
             raise ValueError(f"Unknown set_type: {set_type}")
 
     def get_parameters(self, get_type):
+        print("get_parameter")
         getters = {
             "InferenceDev": self._get_inference_dev,
             "GridSize": self._get_grid_size,
@@ -223,7 +224,9 @@ class EfficientSAM_Everything(BaseModel):
         img = img.to(self.device)
         points = points.to(self.device)
         point_labels = point_labels.to(self.device)
-        
+        print(img.size())
+        print(points.size())
+        print(point_labels.size())
         predicted_masks, predicted_iou = self.model(img[None, ...], points, point_labels)
         sorted_ids = torch.argsort(predicted_iou, dim=-1, descending=True)
         predicted_iou_scores = torch.take_along_dim(predicted_iou, sorted_ids, dim=2)
@@ -286,9 +289,9 @@ class EfficientSAM_Everything(BaseModel):
             )
             logger.warning("No masks found after filtering.")
         
-        logger.warning(f"origin: { sorted([np.sum(mask) for mask in sorted_mask_areas] )}")
-        logger.warning(f"filtered_masks: {sorted([np.sum(mask) for mask in filtered_masks])}")
-        logger.warning(f"eliminated_mask: {[np.sum(mask) for mask in eliminated_mask]}")
+        # logger.warning(f"origin: { sorted([np.sum(mask) for mask in sorted_mask_areas] )}")
+        # logger.warning(f"filtered_masks: {sorted([np.sum(mask) for mask in filtered_masks])}")
+        # logger.warning(f"eliminated_mask: {[np.sum(mask) for mask in eliminated_mask]}")
 
         return filtered_masks, sorted_mask_areas, lower_bound, upper_bound
     
@@ -323,11 +326,12 @@ class EfficientSAM_Everything(BaseModel):
         try:
             x1, y1, x2, y2 = bbox
             self.cropImg = self.img[y1:y2, x1:x2]
-
+            print("Area: ", abs(x1 - x2) * abs(y1 - y2))
+            
             img_tensor = ToTensor()(self.cropImg).to(self.device)
             _, original_image_h, original_image_w = img_tensor.shape
-
             xy = []
+            
             for i in range(self.grid_size):
                 curr_x = 0.5 + i / self.grid_size * original_image_w
                 for j in range(self.grid_size):
@@ -363,7 +367,7 @@ class EfficientSAM_Everything(BaseModel):
                 return []
             
             logger.info("Returning final masks.")
-            logger.debug(f"Final masks before return: {final_masks}")
+            # logger.debug(f"Final masks before return: {final_masks}")
             return final_masks
 
         except Exception as e:
@@ -377,7 +381,7 @@ class EfficientSAM_Everything(BaseModel):
             try:
                 logger.info("Running EfficientSAM in background thread.")
                 result = self.run_everything(bbox)
-                logger.debug(f"Thread result: {result}")
+                # logger.debug(f"Thread result: {result}")
                 with self.result_lock:
                     if result is None:
                         logger.error("run_everything returned None.")
@@ -401,7 +405,7 @@ class EfficientSAM_Everything(BaseModel):
 
         with self.result_lock:
             result = self.result_queue.get()
-            logger.debug(f"Result obtained from queue: {result}")
+            # logger.debug(f"Result obtained from queue: {result}")
             if result is None:
                 logger.error("result_queue returned None, returning an empty list.")
                 return []

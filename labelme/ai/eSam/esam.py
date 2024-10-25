@@ -1,6 +1,8 @@
 import os
+import gc
 import math
 from typing import Any, List, Tuple, Type
+import psutil
 
 import torch
 import torch.nn.functional as F
@@ -17,10 +19,17 @@ from PyQt5.QtWidgets import QDialog
 from  ...widgets.text_inputQDialog import StringInputDialog
 
 BATCH = None
+
+def torch_gc():
+        if torch.cuda.is_available():
+                # print(torch.cuda.current_device())
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+                
 class EfficientSam(nn.Module):
     mask_threshold: float = 0.0
     image_format: str = "RGB"
-
+    
     def __init__(
         self,
         batch,
@@ -56,7 +65,7 @@ class EfficientSam(nn.Module):
         self.register_buffer(
             "pixel_std", torch.Tensor(pixel_std).view(1, 3, 1, 1), False
         )
-
+        
     @torch.jit.export
     def predict_masks(
         self,
@@ -83,9 +92,9 @@ class EfficientSam(nn.Module):
         """
         
         batch_size, max_num_queries, num_pts, _ = batched_points.shape
-        print(f"============== batch_size[predict_masks] {batch_size} ==============")
-        print(f"============== max_num_queries[predict_masks] {max_num_queries} ==============")
-        print(f"============== num_pts[predict_masks] {num_pts} ==============")
+        # print(f"============== batch_size[predict_masks] {batch_size} ==============")
+        # print(f"============== max_num_queries[predict_masks] {max_num_queries} ==============")
+        # print(f"============== num_pts[predict_masks] {num_pts} ==============")
         num_pts = batched_points.shape[2]
         rescaled_batched_points = self.get_rescaled_pts(batched_points, input_h, input_w)
 
@@ -195,25 +204,25 @@ class EfficientSam(nn.Module):
         return self.image_encoder(batched_images)
 
     def forward(
-        self,
-        batched_images: torch.Tensor,
-        batched_points: torch.Tensor,
-        batched_point_labels: torch.Tensor,
-        scale_to_original_image_size: bool = True,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+            self,
+            batched_images: torch.Tensor,
+            batched_points: torch.Tensor,
+            batched_point_labels: torch.Tensor,
+            scale_to_original_image_size: bool = True,
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Predicts masks end-to-end from provided images and prompts.
         If prompts are not known in advance, using SamPredictor is
         recommended over calling the model directly.
 
         Arguments:
-          batched_images: A tensor of shape [B, 3, H, W]
-          batched_points: A tensor of shape [B, num_queries, max_num_pts, 2]
-          batched_point_labels: A tensor of shape [B, num_queries, max_num_pts]
-          max_queries_per_batch: Maximum number of queries per batch
+        batched_images: A tensor of shape [B, 3, H, W]
+        batched_points: A tensor of shape [B, num_queries, max_num_pts, 2]
+        batched_point_labels: A tensor of shape [B, num_queries, max_num_pts]
+        max_queries_per_batch: Maximum number of queries per batch
 
         Returns:
-          A list tuples of two tensors where the ith element is by considering the first i+1 points.
+        A list tuples of two tensors where the ith element is by considering the first i+1 points.
             low_res_mask: A tensor of shape [B, 256, 256] of predicted masks
             iou_predictions: A tensor of shape [B, max_num_queries] of estimated IOU scores
         """
@@ -221,36 +230,37 @@ class EfficientSam(nn.Module):
         
         batch_size, num_queries, max_num_pts, _ = batched_points.shape
         image_embeddings = self.get_image_embeddings(batched_images)
-        
 
         all_masks = []
         all_ious = []
 
+        
         for i in range(0, num_queries, max_queries_per_batch):
-  
             batch_points = batched_points[:, i:i+max_queries_per_batch, :, :]
             batch_labels = batched_point_labels[:, i:i+max_queries_per_batch, :]
-
-            masks, iou_predictions = self.predict_masks(
-                image_embeddings,
-                batch_points,
-                batch_labels,
-                multimask_output=True,
-                input_h=batched_images.shape[2],
-                input_w=batched_images.shape[3],
-                output_h=batched_images.shape[2] if scale_to_original_image_size else -1,
-                output_w=batched_images.shape[3] if scale_to_original_image_size else -1,
-            )
+            
+            with torch.no_grad():
+                masks, iou_predictions = self.predict_masks(
+                    image_embeddings,
+                    batch_points,
+                    batch_labels,
+                    multimask_output=True,
+                    input_h=batched_images.shape[2],
+                    input_w=batched_images.shape[3],
+                    output_h=batched_images.shape[2] if scale_to_original_image_size else -1,
+                    output_w=batched_images.shape[3] if scale_to_original_image_size else -1,
+                )
 
             all_masks.append(masks)
             all_ious.append(iou_predictions)
-            torch.cuda.empty_cache()
+            del masks, iou_predictions
+            torch_gc()
             
         all_masks = torch.cat(all_masks, dim=1)  
         all_ious = torch.cat(all_ious, dim=1)
-        
-        torch.cuda.empty_cache()
+        torch_gc()
         return all_masks, all_ious
+
 
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize pixel values and pad to a square input."""
@@ -319,7 +329,7 @@ def load_model_checkpoint(sam: nn.Module, checkpoint: str = None, dev: int = Non
                 map_location=map_location,
                 weights_only=True
             )
-        print(f"Loaded state_dict keys: {list(state_dict.keys())}")  
+
     except Exception as e:
         msgbox.showMessageBox("Error", f"Error loading checkpoint: {e}")
         raise RuntimeError(f"Error loading checkpoint: {e}")
@@ -408,3 +418,5 @@ def build_efficient_sam(dev, encoder_patch_embed_dim, encoder_num_heads, batch, 
     load_model_checkpoint(sam, checkpoint, dev)
     torch.cuda.empty_cache()
     return sam
+
+    

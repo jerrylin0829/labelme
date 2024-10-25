@@ -1,3 +1,5 @@
+If you clone the project from [https://github.com/jerrylin0829/labelme.git](https://github.com/jerrylin0829/labelme.git), please go to /dev_doc to view manual.md and readme.md
+
 <h1 align="center">
   <img src="labelme/icons/icon.png"><br/>labelme
 </h1>
@@ -75,7 +77,7 @@ You need install [Anaconda](https://www.continuum.io/downloads), then run below:
 
 ```bash
 # python3
-conda create --name=labelme python=3
+conda create --name=labelme python=3.9
 source activate labelme
 # conda install -c conda-forge pyside2
 # conda install pyqt
@@ -116,7 +118,7 @@ brew install wkentaro/labelme/labelme  # command line interface
 Install [Anaconda](https://www.continuum.io/downloads), then in an Anaconda Prompt run:
 
 ```bash
-conda create --name=labelme python=3
+conda create --name=labelme python=3.9 
 conda activate labelme
 pip install labelme
 
@@ -179,6 +181,7 @@ cd labelme
 # Install anaconda3 
 curl -L https://github.com/wkentaro/dotfiles/raw/main/local/bin/install_anaconda3.sh | bash -s .
 source .anaconda3/bin/activate
+
 #Install labelme & set CUDA option
 python install_labelme.py --cuda_ver=12.4 --cuda_dir=/path/to/cuda
 
@@ -192,7 +195,7 @@ Below shows how to build the standalone executable on macOS, Linux and Windows.
 
 ```bash
 # Setup conda
-conda create --name labelme python=3.9
+conda create --name labelme python=3.9 # or 3.10
 conda activate labelme
 
 # Build the standalone executable

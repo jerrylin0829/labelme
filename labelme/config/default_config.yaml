@@ -18,8 +18,8 @@ default_shape_color: [0, 255, 0]
 shape_color: auto  # null, 'auto', 'manual'
 shift_auto_shape_color: 0
 label_colors: null
-nms: 0.4
-batch_size: 45
+nms: 0.6
+batch_size: 20
 
 shape:
   # drawing

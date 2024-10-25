@@ -27,7 +27,7 @@ def detect_cuda_version(cuda_dir=None):
         cuda_base_path = cuda_dir or os.environ.get('CUDA_HOME') or '/usr/local'
         for entry in os.listdir(cuda_base_path):
             # 可能需要調 cuda 的位址/版本
-            if entry.startswith("CUDA"):
+            if entry.startswith("cuda-12.4"):
                 nvcc_path = os.path.join(cuda_base_path, entry, "bin", "nvcc")
                 if os.path.exists(nvcc_path):
                     ver = get_nvcc_version(nvcc_path)

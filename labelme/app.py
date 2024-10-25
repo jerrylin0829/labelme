@@ -7,7 +7,7 @@ import os
 import os.path as osp
 import re
 import webbrowser
-import torch ## added by Alvin
+import torch  
 
 
 import imgviz
@@ -22,7 +22,7 @@ from labelme import PY2
 from labelme import __appname__
 from labelme.ai import MODELS_ENABLE
 from labelme.ai import RUN_MODES
-from labelme.ai import _utils  ## added by alvin
+from labelme.ai import _utils   
 from labelme.config import get_config
 from labelme.label_file import LabelFile
 from labelme.label_file import LabelFileError
@@ -869,16 +869,16 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         
         ''' selectRunMode UI for normal AI'''
-        ## added by Alvin
+         
         selectRunMode_nE = QtWidgets.QWidgetAction(self)
         selectRunMode_nE.setDefaultWidget(QtWidgets.QWidget())
         selectRunMode_nE.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
-        ## added by Alvin
+         
         selectRunModeLabel_nE = QtWidgets.QLabel(self.tr("Selected Inference Device Switch"))
         selectRunModeLabel_nE.setAlignment(QtCore.Qt.AlignCenter)
         selectRunMode_nE.defaultWidget().layout().addWidget(selectRunModeLabel_nE)
 
-        ## added by Alvin
+         
         self._selectRunModeComboBox_nE = QtWidgets.QComboBox()
         selectRunMode_nE.defaultWidget().layout().addWidget(self._selectRunModeComboBox_nE)
 
@@ -890,7 +890,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if 'CPUExecutionProvider' in  inference_option :
             self._selectRunModeComboBox_nE.addItem("CPU")
             
-        if 'CUDAExecutionProvider' in inference_option: # added by Alvin
+        if 'CUDAExecutionProvider' in inference_option:  
             try :
                 import torch
 
@@ -953,16 +953,16 @@ class MainWindow(QtWidgets.QMainWindow):
         
         
         ''' selectRunMode UI for Everything'''
-        ## added by Alvin
+         
         selectRunMode = QtWidgets.QWidgetAction(self)
         selectRunMode.setDefaultWidget(QtWidgets.QWidget())
         selectRunMode.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
-        ## added by Alvin
+         
         selectRunModeLabel = QtWidgets.QLabel(self.tr("Selected Inference Device Switch [EVE]"))
         selectRunModeLabel.setAlignment(QtCore.Qt.AlignCenter)
         selectRunMode.defaultWidget().layout().addWidget(selectRunModeLabel)
 
-        ## added by Alvin
+         
         self._selectRunModeComboBox = QtWidgets.QComboBox()
         selectRunMode.defaultWidget().layout().addWidget(self._selectRunModeComboBox)
 
@@ -978,7 +978,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self._selectRunModeComboBox.setEnabled(False) 
         
-        ''' setEverythingGrid UI''' # added by alvin
+        ''' setEverythingGrid UI'''  
         
         setEverythingGrid = QtWidgets.QWidgetAction(self)
         setEverythingGrid.setDefaultWidget(QtWidgets.QWidget())
@@ -988,12 +988,12 @@ class MainWindow(QtWidgets.QMainWindow):
         setEverythingGridLabel.setAlignment(QtCore.Qt.AlignLeft)
         setEverythingGrid.defaultWidget().layout().addWidget(setEverythingGridLabel)
         
-        self._setEverythingGridInput =  QtWidgets.QSpinBox(self)
-        self._setEverythingGridInput.setRange(1, 32) # grid size : 1 ~ 1024  
-        self._setEverythingGridInput.setValue(GRID) # Initial Display Value
-        self._setEverythingGridInput.textChanged.connect(self.setEverythingGridInputVal)
-        setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
-        self._setEverythingGridInput.setEnabled(False)
+        # self._setEverythingGridInput =  QtWidgets.QSpinBox(self)
+        # self._setEverythingGridInput.setRange(1, 32) # grid size : 1 ~ 1024  
+        # self._setEverythingGridInput.setValue(GRID) # Initial Display Value
+        # self._setEverythingGridInput.textChanged.connect(self.setEverythingGridInputVal)
+        # setEverythingGrid.defaultWidget().layout().addWidget(self._setEverythingGridInput)
+        # self._setEverythingGridInput.setEnabled(False)
 
         setEverythingPtr = QtWidgets.QWidgetAction(self)
         setEverythingPtr.setDefaultWidget(QtWidgets.QWidget())
@@ -1095,22 +1095,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # if self.firstStart:
         #    QWhatsThis.enterWhatsThisMode()
 
-    def setEverythingGridInputVal(self,value): #! added by Alvin
-        self._setEverythingGridInput.setValue(int(value))
-        self.canvas.setEverythingGrid(int(value))
+    # def setEverythingGridInputVal(self,value):  
+    #     self._setEverythingGridInput.setValue(int(value))
+    #     self.canvas.setEverythingGrid(int(value))
 
 
-    def inferenceDevChange_nE(self, index):   #! added by Alvin
+    def inferenceDevChange_nE(self, index):    
          if self.canvas._ai_model != None:
              self.canvas._ai_model.set_providers(index)
              
-    def inferenceDevChange4Everything(self, index):  #! added by Alvin
+    def inferenceDevChange4Everything(self, index):   
         if self.canvas._ai_everything == None:
                 self.canvas._ai_everything_initDev = index
         else:
             self._selectRunModeComboBox.setEnabled(False)
             
-    def toggleSAMeverything(self):#! added by Alvin 
+    def toggleSAMeverything(self): 
         self._isTopPanel = True
         self.toggleDrawMode(False, createMode="ai_everything")
         
@@ -1121,7 +1121,7 @@ class MainWindow(QtWidgets.QMainWindow):
             batch = self.batch ,
             nms_thresh = self.nms
         )
-        self.changeStateEverythingWidget()
+        # self.changeStateEverythingWidget()
         
         cuda_num = self.canvas._ai_everything_initDev
         selected_device = self._selectRunModeComboBox.itemText(
@@ -1137,25 +1137,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.WINDOW_COUNT+=1
         
         
-    def setEverythingGridInput(self,txt): #! added by Alvin 
+    def setEverythingGridInput(self,txt):  
         self.canvas.setEverythingGrid(int(txt))
          
-    def changeAiMode(self): #! added by Alvin        
+    def changeAiMode(self):         
         self._iseSAMMode = not self._iseSAMMode
         self._toggleSAMeverything.setEnabled(self._iseSAMMode)
         self._selectRunModeComboBox.setEnabled(self._iseSAMMode)
         self._selectAiModelComboBox.setEnabled(self._iseSAMMode)
     
-    def directChange2Everything(self,model_name):#! added by Alvin  
+    def directChange2Everything(self,model_name):  
         ''' model_name -> Self-expansion'''
         self.changeAiMode()
         self.toggleSAMeverything()
         
-    def changeStateEverythingWidget(self): #! added by Alvin
-        self._setEverythingGridInput.setEnabled(self._iseSAMMode) 
-        self._everythingPtrBtn.setEnabled(self._iseSAMMode)   
+    # def changeStateEverythingWidget(self):  
+    #     self._setEverythingGridInput.setEnabled(self._iseSAMMode) 
+    #     self._everythingPtrBtn.setEnabled(self._iseSAMMode)   
         
-    def openEverythingDialog(self): #! added by Alvin
+    def openEverythingDialog(self):  
         dialog = ParameterDialog(self.canvas.ai_manager.get_model("EfficientSAM_Everything"))
         if dialog.exec_() == QDialog.Accepted:  
             dialog.setParameters() 
@@ -1604,7 +1604,6 @@ class MainWindow(QtWidgets.QMainWindow):
             for x, y in points:
                 shape.addPoint(QtCore.QPointF(x, y))
             shape.close()
-            print("-.-")
 
             default_flags = {}
             if self._config["label_flags"]:

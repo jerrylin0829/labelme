@@ -127,8 +127,8 @@ class Canvas(QtWidgets.QWidget):
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
 
         self._ai_model = None
-        self._ai_everything = None #! added by alvin - for eSAM everything 
-        self._ai_everything_initDev = 0 if torch.cuda.is_available() else None #! added by alvin - for eSAM everything init
+        self._ai_everything = None # for eSAM everything 
+        self._ai_everything_initDev = 0 if torch.cuda.is_available() else None # for eSAM everything init
         
     def fillDrawing(self):
         return self._fill_drawing
@@ -177,7 +177,7 @@ class Canvas(QtWidgets.QWidget):
                 img = labelme.utils.img_qt_to_arr(self.pixmap.toImage())
             )
         
-    def setAiImg(self,img): #!added by alvin
+    def setAiImg(self,img):  
         self.ai_manager.set_model_img(img)
         
         
@@ -188,28 +188,81 @@ class Canvas(QtWidgets.QWidget):
             val=mode
         )
                
-    def setPctLow(self, val): #!added by alvin
+    def setPctLow(self, val):  
         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "PctLow",
             val=val
         )
          
-    def setPctUp(self, val): #!added by alvin
+    def setPctUp(self, val):  
         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "PctUp",
             val= val
         )
                 
-    def seteSAMEverythingDev(self,num): #!added by alvin
+    def seteSAMEverythingDev(self,num):  
         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "InferenceDev",
             val=num
         )
-        
-    def setEverythingGrid(self,grid_size) : #!added by alvin
+    
+    def calculate_grid_size(self, area, gpu_memory_available):
+        """
+        根據公式 Memory Usage = 0.00004 * Area * (grid_size**2) + 1580.67254 動態計算 grid_size
+        """
+        max_memory_usage = gpu_memory_available * 0.9
+        base_memory_usage = 1580.67254
+
+        # 公式變換得出 grid_size:
+        # Memory Usage = 0.00004 * Area * (grid_size**2) + base_memory_usage
+        # max_memory_usage - base_memory_usage = 0.00004 * Area * (grid_size**2)
+        # grid_size**2 = (max_memory_usage - base_memory_usage) / (0.00004 * Area)
+
+        if area > 0:  # 防止除以零
+            max_grid_size_square = (max_memory_usage - base_memory_usage) / (0.00004 * area)
+            if max_grid_size_square > 0:
+                return int(max_grid_size_square ** 0.5)  # 取平方根並轉為整數
+            else:
+                return 1  # 保證 grid_size 最小值為1
+        return 1
+
+    def get_crop_img_area(self, bbox):
+        x1, y1, x2, y2 = bbox
+        area = abs(x2 - x1) * abs(y2 - y1)
+        return area
+
+    def get_gpu_available_memory(self):
+        """
+        獲取當前 GPU 可用內存
+        """
+        if torch.cuda.is_available():
+            gpu_id = torch.cuda.current_device()
+            total_memory = torch.cuda.get_device_properties(gpu_id).total_memory 
+            reserved_memory = torch.cuda.memory_reserved(gpu_id) 
+            allocated_memory = torch.cuda.memory_allocated(gpu_id)  
+            available_memory = total_memory - reserved_memory  
+            return available_memory / (1024 ** 2) 
+        else:
+            raise RuntimeError("No GPU found or CUDA is not available")
+
+
+    def update_grid_size_based_on_area_and_gpu(self, bbox):
+        """
+        從 crop_img 獲取面積並根據當前 GPU 可用記憶體計算 grid_size
+        """
+        print("bbox: ", bbox)
+        area = self.get_crop_img_area(bbox)  # 自行實現獲取 crop_img 面積的邏輯
+        gpu_memory_available = self.get_gpu_available_memory()  # 自行實現獲取 GPU 可用記憶體
+
+        grid_size =  min(self.calculate_grid_size(area, gpu_memory_available),  50)
+        self.setEverythingGrid(grid_size)
+        logger.info(f"Auto-calculated grid size: {grid_size}")
+
+
+    def setEverythingGrid(self,grid_size) :  
         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "GridSize",
@@ -217,7 +270,7 @@ class Canvas(QtWidgets.QWidget):
         )
         logger.info(f"success {grid_size}")
         
-    def setEverythingNMS(self,nms_thresh):#!added by alvin
+    def setEverythingNMS(self,nms_thresh): 
         self.ai_manager.set_parameters(
             "EfficientSAM_Everything",
             set_type = "NMS",
@@ -245,19 +298,19 @@ class Canvas(QtWidgets.QWidget):
     def getBatchQuery(self):
         return self._ai_everything.model.getBatchQuery()   
     
-    def getEverythingCudaNum(self):#!added by alvin
+    def getEverythingCudaNum(self): 
         return self.ai_manager.get_parameters(
             "EfficientSAM_Everything",
             "InferenceDev"
         ) 
         
-    def getEverythingGrid(self): #!added by alvin
+    def getEverythingGrid(self):  
          return self.ai_manager.get_parameters(
             "EfficientSAM_Everything",
             "GridSize"
         )        
 
-    def getEverythingNMS(self): #!added by alvin
+    def getEverythingNMS(self):  
         return self.ai_manager.get_parameters(
             "EfficientSAM_Everything",
             "NMS"
@@ -269,7 +322,7 @@ class Canvas(QtWidgets.QWidget):
             "MFA"
         )        
         
-    def getRunMode(self): #! added by Alvin
+    def getRunMode(self): 
         return self.ai_manager.get_parameters(
             "EfficientSam (accuracy)",
             "RunMode"
@@ -819,7 +872,7 @@ class Canvas(QtWidgets.QWidget):
             return super(Canvas, self).paintEvent(event)
         
         if self.createMode in ["ai_polygon","ai_mask","ai_boundingbox"] :
-            logger.info(f"{self.createMode}")
+            # logger.info(f"{self.createMode}")
             if self.ai_manager.is_model_available("EfficientSam (accuracy)") == False :
                 self.initAimodel(
                     "EfficientSam (accuracy)",
@@ -1012,7 +1065,7 @@ class Canvas(QtWidgets.QWidget):
         return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
     
     def try2RecoverEverything(self, bbox, retry_count=0, max_retries=3):
- 
+        
         if retry_count >= max_retries:
             self.msgBox.showMessageBox(
                 "Fatal", "Maximum number of retries exceeded, model cannot be recovered"
@@ -1143,6 +1196,7 @@ class Canvas(QtWidgets.QWidget):
                 bbox = (x1, y1, x2, y2)
                 
                 try:
+                        self.update_grid_size_based_on_area_and_gpu(bbox)
                         masks = self.ai_manager._run_model_with_recovery(
                             model_name="EfficientSAM_Everything",
                             bbox=bbox
@@ -1172,6 +1226,9 @@ class Canvas(QtWidgets.QWidget):
                             )
                             self.current.close()
                             self.shapes.append(self.new_shape)
+                            
+                            # 清理 GPU 記憶體
+                            # torch.cuda.empty_cache()
         else:
             self.current.close()
             self.shapes.append(self.current)

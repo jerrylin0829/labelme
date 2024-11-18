@@ -19,7 +19,7 @@
 - 優點：最為精準
 
 ### 3. ai_mask
-- 使用方法：　滑鼠點擊單個零組件後可持續點擊其他零組件，模型會將範圍內相同的零組件標記起來，按 `ctrl + click left` ，輸入 Label 名稱（必填）、Group ID（選填）、 Label description （選填）
+- 使用方法：滑鼠點擊單個零組件後可持續點擊其他零組件，模型會將範圍內相同的零組件標記起來，按 `ctrl + click left` ，輸入 Label 名稱（必填）、Group ID（選填）、 Label description （選填）
 - 用途：適合中範圍、零組件集中但須多個標記時
 - 優點：比起單個標記、速度快很多
 
